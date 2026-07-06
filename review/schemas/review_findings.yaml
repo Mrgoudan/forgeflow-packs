@@ -1,0 +1,16 @@
+# The reviewer's output contract. verdict enum values become the step's
+# routable outcomes; everything else is archived claim data.
+type: object
+required: [verdict]
+properties:
+  verdict: { enum: [FINDINGS, CLEAN] }
+  findings:
+    type: array
+    items:
+      type: object
+      required: [title]
+      properties:
+        title:    { type: string }
+        path:     { type: string }
+        detail:   { type: string }
+        severity: { enum: [low, medium, high] }

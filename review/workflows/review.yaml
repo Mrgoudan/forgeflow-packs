@@ -1,0 +1,40 @@
+# Review a local branch against a base: worktree at the branch head,
+# deterministic diff, one agent lens, findings filed as claims.
+# The forge intake (pr.opened -> review.requested) plugs in later as a
+# poller block; this workflow will not change when it does.
+workflow: review
+consumes: [review.requested]
+emits: []
+
+steps:
+  - name: workspace
+    block: worktree.create
+    timeout_s: 120
+    params: { repo: "{paths.repo}", base: "{payload.branch}" }
+    outcomes: { ok: diff, dirty: failed, timeout: failed }
+
+  - name: diff
+    block: review.diff
+    timeout_s: 60
+    params: { base: "{payload.base}" }
+    outcomes: { ok: lens, empty: done, error: failed, timeout: failed }
+
+  - name: lens
+    block: agent.run
+    llm: review
+    schema: review_findings
+    timeout_s: 900
+    context: [payload]
+    outcomes:
+      FINDINGS: file          # claims -> findings rows (state 'found')
+      CLEAN: done
+      agent_limit: parked     # rate limited: park, retry when released
+      agent_invalid: failed   # garbage after 2 re-asks
+      agent_backend: parked   # CLI/transport broke
+      timeout: failed
+
+  - name: file
+    block: review.file_findings
+    timeout_s: 30
+    params: { repo: "{paths.repo}" }
+    outcomes: { ok: done }

@@ -1,0 +1,9 @@
+# machine-local pack configs (examples are the documentation)
+*/project.yaml
+
+# demo scratch
+demo-run/
+
+# python
+__pycache__/
+*.pyc

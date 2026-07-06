@@ -1,0 +1,14 @@
+# Local embedding sidecar. Copy to ~/.config/systemd/user/embed-server.service,
+# fix paths, then: systemctl --user daemon-reload && systemctl --user enable --now embed-server
+[Unit]
+Description=forgeflow embedding sidecar (sentence-transformers)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/bsd/forgeflow-packs/scripts/embed_server.py --port 7997
+Environment=EMBED_DEVICE=cpu
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

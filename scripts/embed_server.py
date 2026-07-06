@@ -29,17 +29,29 @@ def main():
     device = os.environ.get("EMBED_DEVICE", "cpu")
     model = SentenceTransformer(args.model, device=device)
     dim = model.get_sentence_embedding_dimension()
-    print("ready: %s dim=%d device=%s port=%d"
-          % (args.model, dim, device, args.port), flush=True)
+
+    # fingerprint the ACTUAL loaded weights so the engine's models expect:
+    # pin can refuse a drifted model across the HTTP boundary
+    import hashlib
+    h = hashlib.sha256()
+    state = model.state_dict()
+    for key in sorted(state):
+        h.update(key.encode())
+        h.update(state[key].detach().cpu().numpy().tobytes())
+    weights_sha = h.hexdigest()
+    print("ready: %s dim=%d device=%s port=%d weights_sha256=%s"
+          % (args.model, dim, device, args.port, weights_sha), flush=True)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
 
-        def do_GET(self):          # health check
+        def do_GET(self):          # health check / pin source
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(json.dumps({"model": args.model, "dim": dim}).encode())
+            self.wfile.write(json.dumps(
+                {"model": args.model, "dim": dim,
+                 "weights_sha256": weights_sha}).encode())
 
         def do_POST(self):
             try:

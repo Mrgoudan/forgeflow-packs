@@ -1,0 +1,15 @@
+# The forgeflow daemon for one pack + state root. Copy, fix paths, enable.
+# The engine's flock makes double-starts harmless.
+[Unit]
+Description=forgeflow daemon (review pack)
+After=network.target embed-server.service
+
+[Service]
+Environment=PYTHONPATH=%h/bsd/forgeflow
+WorkingDirectory=%h/bsd/forgeflow-packs
+ExecStart=/usr/bin/python3 -m forgeflow --root %h/ff-review --pack %h/bsd/forgeflow-packs/review run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -63,12 +63,27 @@ def _history(env, task, spec):
 
 @context_provider("patterns")
 def _patterns(env, task, spec):
-    return [{"id": r["id"], "pattern": r["grep_rule"],
-             "lens": r["review_lens"]}
+    """Active defect patterns. review_lens is the natural-language rung —
+    the strong model is a far better fuzzy matcher than embedding cosine,
+    so we TEACH it the pattern rather than trying to retrieve a match."""
+    return [{"id": r["id"], "lens": r["review_lens"], "grep_rule": r["grep_rule"]}
             for r in env.conn.execute(
                 "SELECT id, grep_rule, review_lens FROM patterns"
-                " WHERE status='active' AND grep_rule IS NOT NULL"
-                " ORDER BY id")]
+                " WHERE status='active' ORDER BY id")]
+
+
+@context_provider("candidates")
+def _candidates(env, task, spec):
+    """The agent lens's own proposed findings (state 'found'), for the
+    refutation pass to vet. Machine (pattern-*) findings are excluded —
+    they are evidence, not claims, and are never refuted."""
+    branch = (task.get("payload") or {}).get("branch", "")
+    return [{"key": r["key"], "title": r["title"], "severity": r["severity"],
+             "detail": r["detail"]}
+            for r in env.conn.execute(
+                "SELECT key, title, severity, detail FROM findings"
+                " WHERE source='review' AND state='found'"
+                " AND key LIKE 'review-' || ? || '-%' ORDER BY id", (branch,))]
 
 
 @block("review.pattern_scan", "state", {"clean", "hits", "timeout"},
@@ -88,8 +103,10 @@ def review_pattern_scan(ctx, task, prev):
              if line.startswith("+") and not line.startswith("+++")]
     hits, staged = [], []
     for rule in ctx.get("patterns") or []:
+        if not rule.get("grep_rule"):
+            continue          # a lens-only pattern has no machine rule
         try:
-            rx = re.compile(rule["pattern"])
+            rx = re.compile(rule["grep_rule"])
         except re.error:
             continue          # a broken stored rule must not kill review
         for n, text in added:

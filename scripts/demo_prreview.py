@@ -109,15 +109,19 @@ paths: {{ repo: {repo} }}
 tools: {{ git: {{ path: git }} }}
 workflows: [workflows]
 blocks:    [blocks/reviewblocks.py, blocks/forge.py, blocks/providers.py]
-prompts: {{ review: prompts/review.md }}
-schemas: {{ review_findings: schemas/review_findings.yaml }}
+prompts: {{ review: prompts/review.md, refute: prompts/refute.md }}
+schemas:
+  review_findings: schemas/review_findings.yaml
+  refute_decisions: schemas/refute_decisions.yaml
 agents:
   review: {{ backend: claude-cli, cli: {cli} }}
+  refute: {{ backend: claude-cli, cli: {cli} }}
 params:
   prs_url: "{forge}/repos/demo/pulls?state=open"
   comment_url: "{forge}/repos/demo/pulls/{{payload.request.pr}}/comments"
   forge_auth: {{ token_ref: DEMO, style: query, name: access_token }}
   deny_patterns: ["BEGIN [A-Z]+ PRIVATE KEY"]
+  min_severity: medium
 """.format(repo=clone, cli=fake_agent, forge=forge.url))
 
     eng = engine.Engine(work / "ff", pack=config.load_pack(HERE / "review"))
@@ -151,8 +155,9 @@ params:
     print("\n-- tasks --")
     for t in eng.conn.execute("SELECT id, kind, state FROM tasks ORDER BY id"):
         print(" ", dict(t))
-    print("-- findings --")
-    for f in eng.conn.execute("SELECT key, state, severity, title FROM findings"):
+    print("-- findings (state shows refutation verdict) --")
+    for f in eng.conn.execute("SELECT key, state, severity, title FROM findings"
+                              " ORDER BY id"):
         print(" ", dict(f))
     print("-- egress --")
     for e in eng.conn.execute("SELECT id, kind, target, forge_id FROM egress"):
@@ -168,21 +173,40 @@ params:
     print("\nreplay poll: executed %d task(s) (just the poll); tasks total %d;"
           " comments still %d" % (n2, total, len(forge.comments)))
 
-    assert n == 4 and n2 == 1 and len(forge.comments) == 1
+    assert n2 == 1 and len(forge.comments) == 1
     assert "tok-demo-123" in forge.comments[0]["path"]      # query auth flowed
     states = [r["state"] for r in eng.conn.execute("SELECT state FROM tasks")]
     assert all(s == "done" for s in states), states
 
-    # the no-AI prescan filed a machine finding from the pattern rule
-    keys = [r["key"] for r in eng.conn.execute("SELECT key FROM findings")]
-    assert any(k.startswith("pattern-pr-7-unsafe-deserialize") for k in keys), keys
-    # the agent's prompt carried history + lessons context, pinned
-    prompt = (work / "ff" / "data" / "runs" / "1" / "ask0" / "prompt").read_text()
-    assert "## context: history" in prompt and "F-prior-9" in prompt
-    assert "## context: lessons" in prompt and "serialized blobs" in prompt
-    print("\ncontext the lens saw: history(F-prior-9) + lesson + no-AI"
-          " pattern finding filed before any model ran")
-    print("PR REVIEW CHAIN: OK")
+    def finding(key_like):
+        return eng.conn.execute(
+            "SELECT key, state, severity FROM findings WHERE key LIKE ?",
+            (key_like,)).fetchone()
+
+    # 1. no-AI prescan filed a machine finding, adjudicate triaged it
+    machine = finding("pattern-pr-7-unsafe-deserialize%")
+    assert machine and machine["state"] == "triaged", dict(machine or {})
+    # 2. refutation CONFIRMED the RCE (triaged) and REJECTED the div-zero
+    rce = finding("review-pr-7-0")
+    weak = finding("review-pr-7-1")
+    assert rce["state"] == "triaged", dict(rce)
+    assert weak["state"] == "rejected", dict(weak)   # <-- false positive dropped
+    # 3. the lens prompt carried history + lessons + pattern lenses, pinned
+    lens_prompt = (work / "ff" / "data" / "runs" / "1" / "ask0" / "prompt").read_text()
+    assert "## context: history" in lens_prompt and "F-prior-9" in lens_prompt
+    assert "## context: lessons" in lens_prompt and "serialized blobs" in lens_prompt
+    assert "## context: patterns" in lens_prompt
+    # 4. only the confirmed (>= min_severity medium) reached the PR comment
+    comment = forge.comments[0]["body"]
+    assert "RCE" in comment
+    assert "divide by zero" not in comment   # rejected finding never posted
+
+    print("\nindustrial review result:")
+    print("  no-AI pattern finding   -> triaged (posted, model-independent)")
+    print("  lens RCE finding        -> CONFIRMED by refutation -> triaged -> posted")
+    print("  lens div-zero finding   -> REJECTED by refutation -> archived, NOT posted")
+    print("  lens prompt pinned with history + lessons + pattern lenses")
+    print("INDUSTRIAL REVIEW CHAIN: OK")
 
 
 if __name__ == "__main__":

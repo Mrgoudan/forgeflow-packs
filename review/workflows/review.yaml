@@ -1,10 +1,10 @@
-# Review a local branch against a base: worktree at the branch head,
-# deterministic diff, one agent lens, findings filed as claims.
-# The forge intake (pr.opened -> review.requested) plugs in later as a
-# poller block; this workflow will not change when it does.
+# Industrial review pipeline: no-AI machine core + agent lens + adversarial
+# refutation, all findings routed through the finding state machine. Only
+# vetted/machine findings reach 'triaged' (and thus egress); speculative
+# lens findings are rejected, archived, never posted.
 workflow: review
 consumes: [review.requested]
-emits: [review.completed]
+emits: [review.completed, finding.triaged, finding.rejected]
 
 steps:
   - name: workspace
@@ -19,13 +19,15 @@ steps:
     params: { base: "{payload.base}" }
     outcomes: { ok: prescan, empty: done, error: failed, timeout: failed }
 
-  - name: prescan               # no-AI: pattern rules over added lines;
-    block: review.pattern_scan  # hits are machine findings, filed even
-    timeout_s: 60               # with every model down
+  # ---- no-AI core: runs and files findings even with every model down ----
+  - name: prescan
+    block: review.pattern_scan
+    timeout_s: 60
     params: { repo: "{paths.repo}" }
     context: [patterns]
     outcomes: { clean: lens, hits: lens, timeout: failed }
 
+  # ---- AI stage 1: propose candidate findings ----------------------------
   - name: lens
     block: agent.run
     llm: review
@@ -33,29 +35,53 @@ steps:
     timeout_s: 900
     context:
       - payload
-      - history                 # prior findings in the touched files
+      - history                       # prior defects in touched files
+      - patterns                      # defect-class lenses to look for
       - lessons: { task_kind: review }
     outcomes:
-      FINDINGS: file          # claims -> findings rows (state 'found')
-      CLEAN: done
-      agent_limit: parked     # rate limited: park, retry when released
-      agent_invalid: failed   # garbage after 2 re-asks
-      agent_backend: parked   # CLI/transport broke
-      timeout: failed
+      FINDINGS: file
+      CLEAN: adjudicate               # nothing proposed -> still triage machine hits
+      agent_limit: parked             # transient: retry when the model returns
+      agent_backend: parked
+      agent_invalid: adjudicate       # garbage: degrade to machine findings
+      timeout: adjudicate
 
   - name: file
-    block: review.file_findings
+    block: review.file_findings       # candidates -> findings rows (state found)
     timeout_s: 30
     params: { repo: "{paths.repo}" }
+    outcomes: { ok: refute }
+
+  # ---- AI stage 2: adversarial refutation --------------------------------
+  - name: refute
+    block: agent.run
+    llm: refute
+    schema: refute_decisions
+    timeout_s: 900
+    context:
+      - payload
+      - candidates                    # the lens's own findings, to vet
+    outcomes:
+      DECIDED: adjudicate
+      NONE: adjudicate
+      agent_limit: parked
+      agent_backend: parked
+      agent_invalid: adjudicate       # can't vet -> machine findings still ship
+      timeout: adjudicate
+
+  # ---- adjudicate through the state machine, then announce ---------------
+  - name: adjudicate
+    block: review.adjudicate
+    timeout_s: 30
     outcomes: { ok: announce }
 
-  - name: announce              # fact for whoever cares (pr_report does)
+  - name: announce
     block: event.emit
     timeout_s: 10
     params:
       name: review.completed
       data:
-        request: "{payload}"    # whole originating request rides along
-        filed: "{prev.filed}"
+        request: "{payload}"
+        confirmed: "{prev.confirmed}"
         findings: "{prev.findings}"
     outcomes: { ok: done }

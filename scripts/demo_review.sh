@@ -46,10 +46,15 @@ paths: { repo: $REPO }
 tools: { git: { path: git, version_cmd: ["--version"] } }
 workflows: [workflows]
 blocks:    [blocks/reviewblocks.py, blocks/providers.py]
-prompts: { review: prompts/review.md }
-schemas: { review_findings: schemas/review_findings.yaml }
+prompts: { review: prompts/review.md, refute: prompts/refute.md }
+schemas:
+  review_findings: schemas/review_findings.yaml
+  refute_decisions: schemas/refute_decisions.yaml
 agents:
   review: { backend: claude-cli }
+  refute: { backend: claude-cli }
+params:
+  min_severity: low
 EOF
 
 # --- run it ---------------------------------------------------------------

@@ -1,0 +1,15 @@
+# The refutation pass output contract. One decision per candidate finding.
+# verdict enum routes the step; decisions carry the adjudication.
+type: object
+required: [verdict, decisions]
+properties:
+  verdict: { enum: [DECIDED, NONE] }
+  decisions:
+    type: array
+    items:
+      type: object
+      required: [key, decision]
+      properties:
+        key:      { type: string }
+        decision: { enum: [CONFIRM, REJECT] }
+        reason:   { type: string }

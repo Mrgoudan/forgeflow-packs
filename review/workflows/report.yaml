@@ -13,7 +13,8 @@ steps:
       comment_url: "{pack.comment_url}"
       auth: "{pack.forge_auth}"
       deny_patterns: "{pack.deny_patterns}"
-      body_header: "Automated review of PR #{payload.request.pr} at {payload.request.head_sha}: {payload.filed} finding(s)."
+      min_severity: "{pack.min_severity}"
+      body_header: "Automated review of PR #{payload.request.pr} at {payload.request.head_sha}: {payload.confirmed} finding(s)."
     outcomes:
       sent: done
       archived: done

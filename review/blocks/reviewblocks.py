@@ -66,5 +66,69 @@ def review_file_findings(ctx, task, prev):
                         "severity": f.get("severity"),
                         "path": f.get("path")})
     return "ok", {"_staged": staged, "filed": len(staged),
-                  "findings": summary,
+                  "findings": summary, "path": (prev or {}).get("path"),
                   "run_id": (prev or {}).get("_run_id")}
+
+
+_SEV_RANK = {"low": 1, "medium": 2, "high": 3}
+
+
+@block("review.adjudicate", "state", {"ok"})
+def review_adjudicate(ctx, task, prev):
+    """The verdict of the refutation pass, applied through the finding
+    state machine. Agent candidates the refuter CONFIRMED move found ->
+    triaged (with the reason as evidence); REJECTED move found -> rejected.
+    Machine (pattern-*) findings are confirmed by construction -> triaged.
+    Only triaged findings reach egress; rejected ones are archived, not
+    posted. The confirmed set (with severity) rides to review.completed."""
+    conn = ctx["_conn"]
+    payload = task.get("payload") or {}
+    branch = payload.get("branch", "")
+    run_id = (prev or {}).get("_run_id")
+    decisions = {d["key"]: d for d in (prev or {}).get("decisions") or []}
+
+    staged, confirmed = [], []
+
+    def _lookup(key):
+        r = conn.execute("SELECT id, title, severity, state FROM findings"
+                         " WHERE key=?", (key,)).fetchone()
+        return r
+
+    # agent candidates: adjudicate per the refuter's decision
+    for r in conn.execute(
+            "SELECT id, key, title, severity, state FROM findings"
+            " WHERE source='review' AND key LIKE 'review-' || ? || '-%'"
+            " ORDER BY id", (branch,)):
+        if r["state"] != "found":
+            continue
+        d = decisions.get(r["key"])
+        if d and str(d.get("decision", "")).upper() == "CONFIRM":
+            staged.append({"op": "transition", "finding_id": r["id"],
+                           "to_state": "triaged", "event": "review:confirmed",
+                           "evidence": {"reason": d.get("reason", ""),
+                                        "run_id": run_id}})
+            confirmed.append({"key": r["key"], "title": r["title"],
+                              "severity": r["severity"], "confidence": "vetted"})
+        else:
+            staged.append({"op": "transition", "finding_id": r["id"],
+                           "to_state": "rejected", "event": "review:refuted",
+                           "evidence": {"reason": d.get("reason", "") if d else
+                                        "not defended by refutation pass",
+                                        "run_id": run_id}})
+
+    # machine findings: evidence, not claims -> triaged directly
+    for r in conn.execute(
+            "SELECT id, key, title, severity, state FROM findings"
+            " WHERE source='review' AND key LIKE 'pattern-' || ? || '-%'"
+            " ORDER BY id", (branch,)):
+        if r["state"] != "found":
+            continue
+        staged.append({"op": "transition", "finding_id": r["id"],
+                       "to_state": "triaged", "event": "review:machine_rule",
+                       "evidence": {"kind": "pattern_scan"}})
+        confirmed.append({"key": r["key"], "title": r["title"],
+                          "severity": r["severity"], "confidence": "machine"})
+
+    confirmed.sort(key=lambda f: -_SEV_RANK.get(f.get("severity"), 0))
+    return "ok", {"_staged": staged, "findings": confirmed,
+                  "confirmed": len(confirmed)}

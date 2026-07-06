@@ -117,11 +117,16 @@ def publish_comment(ctx, task, prev):
     if not request.get("pr"):
         return "skipped", {"reason": "no pr in request (local review)"}
     findings = payload.get("findings") or []
+    rank = {"low": 1, "medium": 2, "high": 3}
+    floor = rank.get(ctx.get("min_severity", "low"), 0)
+    posted = [f for f in findings if rank.get(f.get("severity"), 1) >= floor]
+    if not posted:
+        return "skipped", {"reason": "no findings at or above min_severity",
+                           "considered": len(findings)}
     body = _tpl(ctx["body_header"], ctx, task, prev) + "\n\n"
-    for f in findings:
-        body += "- [%s] %s (%s)\n" % (f.get("severity", "?"),
-                                      f.get("title", "untitled"),
-                                      f.get("path", "?"))
+    for f in posted:
+        body += "- [%s] %s\n" % (f.get("severity", "?"),
+                                 f.get("title", "untitled"))
     for pattern in ctx.get("deny_patterns", ()):
         if re.search(pattern, body):
             return "leak_blocked", {"pattern": pattern}

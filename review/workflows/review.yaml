@@ -17,14 +17,24 @@ steps:
     block: review.diff
     timeout_s: 60
     params: { base: "{payload.base}" }
-    outcomes: { ok: lens, empty: done, error: failed, timeout: failed }
+    outcomes: { ok: prescan, empty: done, error: failed, timeout: failed }
+
+  - name: prescan               # no-AI: pattern rules over added lines;
+    block: review.pattern_scan  # hits are machine findings, filed even
+    timeout_s: 60               # with every model down
+    params: { repo: "{paths.repo}" }
+    context: [patterns]
+    outcomes: { clean: lens, hits: lens, timeout: failed }
 
   - name: lens
     block: agent.run
     llm: review
     schema: review_findings
     timeout_s: 900
-    context: [payload]
+    context:
+      - payload
+      - history                 # prior findings in the touched files
+      - lessons: { task_kind: review }
     outcomes:
       FINDINGS: file          # claims -> findings rows (state 'found')
       CLEAN: done

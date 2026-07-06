@@ -108,7 +108,7 @@ name: review
 paths: {{ repo: {repo} }}
 tools: {{ git: {{ path: git }} }}
 workflows: [workflows]
-blocks:    [blocks/reviewblocks.py, blocks/forge.py]
+blocks:    [blocks/reviewblocks.py, blocks/forge.py, blocks/providers.py]
 prompts: {{ review: prompts/review.md }}
 schemas: {{ review_findings: schemas/review_findings.yaml }}
 agents:
@@ -122,6 +122,28 @@ params:
 
     eng = engine.Engine(work / "ff", pack=config.load_pack(HERE / "review"))
     print("orchestration:", json.dumps(eng.subscriptions, indent=1))
+
+    # seed what the system would have LEARNED by now (DATAMODEL §4):
+    # a review lesson, a machine-checkable pattern, and a prior finding
+    # implicated in the touched file — review should surface all three.
+    eng.conn.execute(
+        "INSERT INTO lessons(task_kind, trigger, rule) VALUES ('review',"
+        " 'always', 'Never trust serialized blobs; audit every"
+        " deserialization call site.')")
+    eng.conn.execute(
+        "INSERT INTO patterns(id, description, grep_rule, review_lens)"
+        " VALUES ('unsafe-deserialize', 'deserializing external data',"
+        " 'pickle\\.loads', 'check every deserialization site')")
+    obj_id = eng.conn.execute(
+        "INSERT INTO code_objects(repo, path, kind, first_seen_sha,"
+        " last_seen_sha) VALUES ('demo', 'discount.py', 'file', 'seed',"
+        " 'seed')").lastrowid
+    prior = db.upsert_finding(eng.conn, "F-prior-9",
+                              "earlier deserialization bug in discount flow",
+                              "bughunt", "demo")
+    eng.conn.execute("INSERT INTO implications(finding_id, object_id, role)"
+                     " VALUES (?, ?, 'root_cause')", (prior, obj_id))
+
     db.emit_event(eng.conn, "forge.poll_requested", {"tick": 1}, eng.subscriptions)
     n = eng.run_until_idle()
     print("\nexecuted %d task(s)" % n)
@@ -150,7 +172,17 @@ params:
     assert "tok-demo-123" in forge.comments[0]["path"]      # query auth flowed
     states = [r["state"] for r in eng.conn.execute("SELECT state FROM tasks")]
     assert all(s == "done" for s in states), states
-    print("\nPR REVIEW CHAIN: OK")
+
+    # the no-AI prescan filed a machine finding from the pattern rule
+    keys = [r["key"] for r in eng.conn.execute("SELECT key FROM findings")]
+    assert any(k.startswith("pattern-pr-7-unsafe-deserialize") for k in keys), keys
+    # the agent's prompt carried history + lessons context, pinned
+    prompt = (work / "ff" / "data" / "runs" / "1" / "ask0" / "prompt").read_text()
+    assert "## context: history" in prompt and "F-prior-9" in prompt
+    assert "## context: lessons" in prompt and "serialized blobs" in prompt
+    print("\ncontext the lens saw: history(F-prior-9) + lesson + no-AI"
+          " pattern finding filed before any model ran")
+    print("PR REVIEW CHAIN: OK")
 
 
 if __name__ == "__main__":

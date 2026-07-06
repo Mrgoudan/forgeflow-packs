@@ -45,7 +45,7 @@ name: review
 paths: { repo: $REPO }
 tools: { git: { path: git, version_cmd: ["--version"] } }
 workflows: [workflows]
-blocks:    [blocks/reviewblocks.py]
+blocks:    [blocks/reviewblocks.py, blocks/providers.py]
 prompts: { review: prompts/review.md }
 schemas: { review_findings: schemas/review_findings.yaml }
 agents:

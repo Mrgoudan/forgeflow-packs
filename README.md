@@ -37,3 +37,17 @@ python3 -m forgeflow --root ~/ff-review --pack review emit review.requested \
 
 Forge intake (PR opened -> review.requested) is the next block to add;
 the workflow will not change when it arrives.
+
+## embed_server.py — local BERT sidecar
+
+Serves a local sentence-transformers model over the standard /v1/embeddings
+protocol so the engine (which never imports ML runtimes) can use it via:
+
+```yaml
+models:
+  bertish: { base_url: "http://127.0.0.1:7997/v1", model: all-MiniLM-L6-v2 }
+```
+
+```bash
+python3 scripts/embed_server.py --port 7997     # loads the model once
+```

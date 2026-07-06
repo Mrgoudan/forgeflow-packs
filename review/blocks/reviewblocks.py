@@ -51,7 +51,7 @@ def review_file_findings(ctx, task, prev):
     decides what the findings become."""
     payload = task.get("payload") or {}
     findings = (prev or {}).get("findings") or []
-    staged = []
+    staged, summary = [], []
     for i, f in enumerate(findings):
         if not isinstance(f, dict) or not f.get("title"):
             continue
@@ -62,5 +62,9 @@ def review_file_findings(ctx, task, prev):
             "detail": json.dumps(f, sort_keys=True),
             "severity": f.get("severity"),
         })
+        summary.append({"title": f["title"][:200],
+                        "severity": f.get("severity"),
+                        "path": f.get("path")})
     return "ok", {"_staged": staged, "filed": len(staged),
+                  "findings": summary,
                   "run_id": (prev or {}).get("_run_id")}

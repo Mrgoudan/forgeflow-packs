@@ -4,7 +4,7 @@
 # poller block; this workflow will not change when it does.
 workflow: review
 consumes: [review.requested]
-emits: []
+emits: [review.completed]
 
 steps:
   - name: workspace
@@ -37,4 +37,15 @@ steps:
     block: review.file_findings
     timeout_s: 30
     params: { repo: "{paths.repo}" }
+    outcomes: { ok: announce }
+
+  - name: announce              # fact for whoever cares (pr_report does)
+    block: event.emit
+    timeout_s: 10
+    params:
+      name: review.completed
+      data:
+        request: "{payload}"    # whole originating request rides along
+        filed: "{prev.filed}"
+        findings: "{prev.findings}"
     outcomes: { ok: done }

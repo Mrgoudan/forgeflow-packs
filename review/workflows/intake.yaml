@@ -1,0 +1,15 @@
+# Forge intake as a workflow: something (cron, loop, operator) emits
+# forge.poll_requested; this polls the PR list and stages one pr.updated
+# event per (pr, head_sha). Replayed polls are free — the queue dedups.
+workflow: pr_intake
+consumes: [forge.poll_requested]
+emits: [pr.updated]
+
+steps:
+  - name: poll
+    block: forge.poll_prs
+    timeout_s: 60
+    params:
+      prs_url: "{pack.prs_url}"
+      auth: "{pack.forge_auth}"
+    outcomes: { ok: done, forge_auth: parked, forge_server: failed, timeout: failed }

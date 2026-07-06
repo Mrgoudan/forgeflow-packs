@@ -3,6 +3,7 @@
 
 # demo scratch
 demo-run/
+demo-pr-run/
 
 # python
 __pycache__/

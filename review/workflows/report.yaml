@@ -1,0 +1,25 @@
+# Egress: post the review result back to the PR. Consumes review.completed
+# from ANY review; skips local (non-PR) reviews deterministically. Without
+# FORGE_WRITE=1 the comment is archived, never sent.
+workflow: pr_report
+consumes: [review.completed]
+emits: []
+
+steps:
+  - name: comment
+    block: publish.comment
+    timeout_s: 60
+    params:
+      comment_url: "{pack.comment_url}"
+      auth: "{pack.forge_auth}"
+      deny_patterns: "{pack.deny_patterns}"
+      body_header: "Automated review of PR #{payload.request.pr} at {payload.request.head_sha}: {payload.filed} finding(s)."
+    outcomes:
+      sent: done
+      archived: done
+      duplicate: done
+      skipped: done
+      leak_blocked: failed
+      forge_auth: parked
+      forge_server: failed
+      timeout: failed

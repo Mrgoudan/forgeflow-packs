@@ -1,0 +1,25 @@
+# Bridge: a PR fact becomes a review request. Fetches the PR head into a
+# local branch, then hands off to the ordinary review workflow — which
+# does not know PRs exist.
+workflow: pr_fetch
+consumes: [pr.updated]
+emits: [review.requested]
+
+steps:
+  - name: fetch
+    block: forge.fetch_pr_head
+    timeout_s: 300
+    params: { repo: "{paths.repo}" }
+    outcomes: { ok: hand, error: failed, timeout: failed }
+
+  - name: hand
+    block: event.emit
+    timeout_s: 10
+    params:
+      name: review.requested
+      data:
+        branch: "pr-{payload.pr}"
+        base: "{payload.target_branch}"
+        pr: "{payload.pr}"
+        head_sha: "{payload.head_sha}"
+    outcomes: { ok: done }

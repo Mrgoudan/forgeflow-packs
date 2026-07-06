@@ -51,3 +51,20 @@ models:
 ```bash
 python3 scripts/embed_server.py --port 7997     # loads the model once
 ```
+
+## PR review (the full chain)
+
+```
+forge.poll_requested -> pr_intake -> pr.updated -> pr_fetch
+   -> review.requested -> review -> review.completed -> pr_report -> PR comment
+```
+
+Four workflows chained only by events; `review` itself does not know PRs
+exist. Forge access is config: `prs_url`/`comment_url` templates + a
+token ref (`FORGE_TOKEN_<REF>` in the 0600 secrets file). `FORGE_WRITE=1`
+gates real sends; comments dedup on (target, body sha); polls are
+replay-free because pr.updated dedups on (pr, head_sha).
+
+```bash
+ENGINE=~/bsd/forgeflow python3 scripts/demo_prreview.py   # fake forge + fake agent
+```

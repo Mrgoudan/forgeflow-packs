@@ -28,9 +28,9 @@ agents:
   # GLM behind the agentic claude CLI (so bsc-* skills + worktree work).
   # ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN come from the sourced secrets
   # file (run-bsc.sh) and are forwarded into the agent by env_keys.
-  review: { backend: claude-cli, model: glm-5.2,
+  review: { backend: claude-cli, model: GLM-5.2,
             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
-  refute: { backend: claude-cli, model: glm-5.2,
+  refute: { backend: claude-cli, model: GLM-5.2,
             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:

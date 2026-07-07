@@ -3,7 +3,7 @@
 Specializes the generic [review](../review) pipeline for BiSheng C:
 
 - **AI = GLM via the agentic claude CLI.** `agents.review`/`refute` use the
-  `claude-cli` backend with `model: glm-4.6`, pointed at GLM's
+  `claude-cli` backend with `model: glm-5.2`, pointed at GLM's
   Anthropic-compatible endpoint through `ANTHROPIC_BASE_URL` /
   `ANTHROPIC_AUTH_TOKEN` (forwarded by `env_keys`). Going through the CLI —
   not the text-only openai-compat backend — is what lets the agent load the

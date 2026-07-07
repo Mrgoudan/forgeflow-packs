@@ -31,7 +31,7 @@ It holds:
 - `FORGE_TOKEN_MAIN` — the forge (gitcode) API token
 - `FORGE_WRITE=1` — uncomment only when ready to post to real PRs
 
-`packs/packs/bsc/run-bsc.sh` sources this file so both the GLM env vars and the
+`packs/bsc/run-bsc.sh` sources this file so both the GLM env vars and the
 forge token reach the daemon from that one place.
 
 ## Folder structure
@@ -74,14 +74,14 @@ forgeflow-packs/
   rules) that runs even with the model down, an agent lens, and an
   adversarial refutation pass that drops speculative findings before
   anything is posted. Only vetted findings reach the PR. See
-  [review/RUNBOOK.md](review/RUNBOOK.md).
+  [review/RUNBOOK.md](packs/review/RUNBOOK.md).
 
 - **bsc** — the review pipeline specialized for BiSheng C: GLM behind the
   agentic claude CLI (so the `bsc-*` skills load), the in-repo user manual
   as authoritative ground truth (overrides skills; a semantics change
   without a manual update is flagged), and AI review made mandatory — if
   the model breaks down the review re-queues rather than degrading. See
-  [bsc/README.md](bsc/README.md).
+  [bsc/README.md](packs/bsc/README.md).
 
 ## Run the tests
 
@@ -98,7 +98,7 @@ mode, manual-wins, the must-update gate, AI-mandatory parking) run offline.
 `bsc/project.yaml` is real (not a template). Just add your two secrets:
 
 ```bash
-$EDITOR ~/.config/forgeflow/secrets.env         # replace the two REPLACE_* lines
+$EDITOR config/secrets.env         # replace the two REPLACE_* lines
 ./packs/bsc/run-bsc.sh validate                        # prove it loads
 ./packs/bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
 ```

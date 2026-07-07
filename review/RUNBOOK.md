@@ -74,11 +74,11 @@ python3 -m forgeflow --root ~/ff-review unpark [id]   # release parked (e.g. mod
 Parked review tasks mean an AI stage hit a limit/backend error — machine
 findings for that PR are already filed; unpark when the model returns.
 
-## Degraded mode (proven)
+## Degraded mode (tested)
 
-Model completely down: prescan still files machine findings, adjudicate
-still triages them; the AI stages park (resumable). The system is never
-down, only its yield is reduced. See `scripts/demo_degraded.py`.
+Model completely down: prescan still files machine findings; the AI stages
+park (resumable). The system is never down, only its yield is reduced.
+Covered by `tests/test_review.py`.
 
 ## Tuning
 
@@ -88,11 +88,10 @@ down, only its yield is reduced. See `scripts/demo_degraded.py`.
   class — it strengthens both the no-AI prescan and the lens.
 - Add `lessons` (task_kind=review) for standing "you missed this" rules.
 
-## Demos (no model cost, fake forge + deterministic agent)
+## Tests (no model cost, fake forge + deterministic agent)
 
 ```bash
-ENGINE=~/bsd/forgeflow python3 scripts/demo_prreview.py   # full chain + refutation
-ENGINE=~/bsd/forgeflow python3 scripts/demo_degraded.py   # model down
+ENGINE=~/bsd/forgeflow python3 -m unittest discover -s tests
 ```
 
 ## Known gaps (not yet built)

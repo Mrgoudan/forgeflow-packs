@@ -5,7 +5,7 @@ Description=forgeflow embedding sidecar (sentence-transformers)
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 %h/bsd/forgeflow-packs/scripts/embed_server.py --port 7997
+ExecStart=/usr/bin/python3 %h/bsd/forgeflow-packs/bin/embed_server.py --port 7997
 Environment=EMBED_DEVICE=cpu
 Restart=on-failure
 RestartSec=5

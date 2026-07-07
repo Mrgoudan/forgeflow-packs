@@ -28,7 +28,7 @@ Specializes the generic [review](../review) pipeline for BiSheng C:
   finding, since the manual is ground truth and must move with semantics.
 
 All three rules are deterministic (git blob hashes + diff name lists) and
-proven by `scripts/demo_bsc_manual.py`.
+covered by `tests/test_bsc.py`.
 
 ## Setup
 

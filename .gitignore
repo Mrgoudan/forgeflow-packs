@@ -2,7 +2,7 @@
 */project.yaml
 
 # demo scratch (any demo-*-run dir)
-demo-*run/
+# (no scratch dirs; tests use tempfile)
 
 # python
 __pycache__/

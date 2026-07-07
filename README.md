@@ -1,70 +1,94 @@
 # forgeflow-packs
 
-Customization (layer 2) built on the [forgeflow engine](https://github.com/Mrgoudan/forgeflow).
-Each directory is a pack: workflows + blocks + prompts + schemas. The
-engine repo stays generic; everything domain- or machine-specific lives
-here.
+Customization (tiers 2 and 3) built on the [forgeflow engine](https://github.com/Mrgoudan/forgeflow).
+The engine stays generic; everything domain- and machine-specific lives
+here as **packs** — a pack is one folder of YAML workflows + plugin blocks +
+prompts + schemas + config.
 
-## review
+## Where your API keys go
 
-Reviews a branch against a base with one agent lens:
-
-```
-review.requested {branch, base}
-  -> worktree at branch head          (worktree.create)
-  -> deterministic diff into cwd      (review.diff, pack block)
-  -> agent reads diff + checkout      (agent.run, schema-gated)
-  -> claims become findings rows      (review.file_findings, pack block)
-```
-
-The agent's output is a claim: findings land in state `found` for a later
-triage/evidence stage. A rate-limited model parks the task; nothing hangs.
-
-Try it (needs the engine on PYTHONPATH and the claude CLI):
+**One file, `chmod 600`:** `~/.config/forgeflow/secrets.env`
 
 ```bash
-ENGINE=~/bsd/forgeflow ./scripts/demo_review.sh
+cp secrets.env.example ~/.config/forgeflow/secrets.env
+$EDITOR ~/.config/forgeflow/secrets.env      # fill GLM key + forge token
+chmod 600 ~/.config/forgeflow/secrets.env    # the engine refuses looser perms
 ```
 
-Setup for a real repo: `cp review/project.yaml.example review/project.yaml`,
-fill `paths.repo`, then:
+It holds three things (see `secrets.env.example` for the template):
+- `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` — GLM behind the claude CLI
+- `FORGE_TOKEN_MAIN` — the forge (gitee/gitcode) API token
+- `FORGE_WRITE=1` — uncomment only when ready to post to real PRs
+
+`bsc/run-bsc.sh` sources this file so both the GLM env vars and the forge
+token reach the daemon from that one place.
+
+## Folder structure
+
+```
+forgeflow-packs/
+├── README.md                 you are here
+├── secrets.env.example       → copy to ~/.config/forgeflow/secrets.env
+│
+├── review/                   generic PR-review pack (forge-agnostic)
+│   ├── project.yaml.example  machine-local config template
+│   ├── RUNBOOK.md            operator guide (setup, run, observe, tune)
+│   ├── workflows/            intake · prfetch · review · report  (YAML)
+│   ├── blocks/               reviewblocks.py · forge.py · providers.py
+│   ├── prompts/              review.md · refute.md
+│   └── schemas/              review_findings · refute_decisions
+│
+├── bsc/                      BiSheng C review pack (extends review/)
+│   ├── project.yaml.example  BSC config (in-repo manual, GLM agents)
+│   ├── README.md             BSC specifics (manual-wins, GLM, gate)
+│   ├── run-bsc.sh            launcher: sources secrets, runs the daemon
+│   ├── workflows/            bsc_review + the forge workflows
+│   ├── blocks/bsc.py         bsc_manual / bsc_notes providers + manual gate
+│   └── prompts/              BSC review + refute prompts
+│
+├── bin/
+│   └── embed_server.py       local embedding sidecar (sentence-transformers)
+│
+├── systemd/                  user-unit templates (daemon + sidecar)
+├── docs/                     design docs (DESIGN · HUNT · INVOCATION · DATAMODEL)
+└── tests/                    unittest suite (fake agent + fake forge; no model cost)
+    ├── helpers.py
+    ├── fixtures/fake_agent.py
+    ├── test_review.py
+    └── test_bsc.py
+```
+
+## The packs
+
+- **review** — an industrial PR reviewer: a no-AI machine core (pattern
+  rules) that runs even with the model down, an agent lens, and an
+  adversarial refutation pass that drops speculative findings before
+  anything is posted. Only vetted findings reach the PR. See
+  [review/RUNBOOK.md](review/RUNBOOK.md).
+
+- **bsc** — the review pipeline specialized for BiSheng C: GLM behind the
+  agentic claude CLI (so the `bsc-*` skills load), the in-repo user manual
+  as authoritative ground truth (overrides skills; a semantics change
+  without a manual update is flagged), and AI review made mandatory — if
+  the model breaks down the review re-queues rather than degrading. See
+  [bsc/README.md](bsc/README.md).
+
+## Run the tests
 
 ```bash
-python3 -m forgeflow --root ~/ff-review --pack review validate
-python3 -m forgeflow --root ~/ff-review --pack review emit review.requested \
-    --data '{"branch": "some-branch", "base": "main"}' --drive
+ENGINE=~/bsd/forgeflow python3 -m unittest discover -s tests
 ```
 
-Forge intake (PR opened -> review.requested) is the next block to add;
-the workflow will not change when it arrives.
+No model or network needed — a deterministic fake agent and a local fake
+forge stand in, so the full pipelines (refutation, severity gate, degraded
+mode, manual-wins, the must-update gate, AI-mandatory parking) run offline.
 
-## embed_server.py — local BERT sidecar
-
-Serves a local sentence-transformers model over the standard /v1/embeddings
-protocol so the engine (which never imports ML runtimes) can use it via:
-
-```yaml
-models:
-  bertish: { base_url: "http://127.0.0.1:7997/v1", model: all-MiniLM-L6-v2 }
-```
+## Quick start (BSC reviewer)
 
 ```bash
-python3 scripts/embed_server.py --port 7997     # loads the model once
-```
-
-## PR review (the full chain)
-
-```
-forge.poll_requested -> pr_intake -> pr.updated -> pr_fetch
-   -> review.requested -> review -> review.completed -> pr_report -> PR comment
-```
-
-Four workflows chained only by events; `review` itself does not know PRs
-exist. Forge access is config: `prs_url`/`comment_url` templates + a
-token ref (`FORGE_TOKEN_<REF>` in the 0600 secrets file). `FORGE_WRITE=1`
-gates real sends; comments dedup on (target, body sha); polls are
-replay-free because pr.updated dedups on (pr, head_sha).
-
-```bash
-ENGINE=~/bsd/forgeflow python3 scripts/demo_prreview.py   # fake forge + fake agent
+cp bsc/project.yaml.example bsc/project.yaml    # fill paths.repo + forge URLs
+cp secrets.env.example ~/.config/forgeflow/secrets.env && chmod 600 $_
+$EDITOR ~/.config/forgeflow/secrets.env         # your GLM key + forge token
+./bsc/run-bsc.sh validate                       # prove it loads
+./bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
 ```

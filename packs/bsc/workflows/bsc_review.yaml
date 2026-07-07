@@ -27,10 +27,18 @@ steps:
       repo: "{paths.repo}"
       manual_path: "{pack.manual_path}"
       semantics_prefixes: "{pack.semantics_prefixes}"
-    outcomes: { ok: sweep, flagged: sweep, error: failed, timeout: failed }
+    outcomes: { ok: build, flagged: build, error: failed, timeout: failed }
+
+  - name: build                      # evidence gate: put the pack's clang at
+    block: evidence.build            # the PR state (incremental) so the sweep
+    timeout_s: 3600                  # tests PR behavior, not base drift.
+    params:
+      cmd: "{pack.build_cmd}"
+      repo: "{paths.repo}"
+    outcomes: { green: sweep, red: lens, error: sweep, timeout: sweep }
 
   - name: sweep                      # deterministic probe hunt (parallel):
-    block: hunt.probe_sweep          # run the probe bench against clang,
+    block: hunt.probe_sweep          # run the probe bench against PR clang,
     timeout_s: 1800                  # capped fan-out, oracle = expected.stderr
     params:
       probes_dir: "{pack.probes_dir}"

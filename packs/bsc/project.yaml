@@ -59,6 +59,12 @@ params:
   # `clang` and compares each probe's stderr to its .expected.stderr oracle.
   # NOTE: point probe_cmd at a clang BUILT WITH THE PR to hunt the PR's
   # behavior; against a base clang it only regression-checks the bench.
+  # evidence-gate build: put the pack's clang at the PR head (incremental),
+  # so the sweep tests PR behavior. Detached checkout mutates paths.repo's
+  # working tree — paths.repo SHOULD be a dedicated review clone, not a dev
+  # tree; the build leaving it at the PR is fine there.
+  build_cmd: ["/home/ziruichen/bsd/forgeflow-packs/packs/bsc/scripts/build_clang.sh",
+              "{paths.repo}", "{paths.repo}/build", "{payload.head_sha}"]
   probes_dir: /home/ziruichen/bsd/forgeflow-packs/vault/bsc/probes
   probe_cmd: ["{paths.repo}/build/bin/clang", "-fsyntax-only",
               "-Wno-nullability-completeness",

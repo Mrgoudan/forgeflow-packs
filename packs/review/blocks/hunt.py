@@ -108,3 +108,35 @@ def _probe_results(env, task, spec):
     return {"note": "These probes DIVERGED from their recorded oracle against "
                     "the PR build — determine whether the diff caused it.",
             "diverged": diverged}
+
+
+@block("evidence.build", "local", {"green", "red", "error", "timeout"},
+       required_params={"cmd"})
+def evidence_build(ctx, task, prev):
+    """Build the code under review (the evidence gate's compile step). green
+    = exit 0; red = the PR does not build (itself a high finding). Classify
+    by exit code ONLY. Carries the worktree path forward. The build makes
+    the pack's clang reflect the PR so the probe sweep tests PR behavior,
+    not base drift."""
+    import subprocess as _sp
+    cmd = [template(c, {"payload": task.get("payload") or {}, "prev": prev or {}})
+           for c in ctx["cmd"]]
+    cwd = ctx.get("cwd")
+    if cwd:
+        cwd = template(cwd, {"payload": task.get("payload") or {}})
+    carry = {"path": (prev or {}).get("path"),
+             "diff_file": (prev or {}).get("diff_file")}
+    try:
+        code, out, err = run_cmd(cmd, ctx["_timeout_s"],
+                                 Path(ctx["_step_dir"]) / "build",
+                                 cwd=cwd, tools=ctx.get("_tools"))
+    except _sp.TimeoutExpired:
+        raise
+    if code != 0:
+        branch = (task.get("payload") or {}).get("branch", "?")
+        return "red", dict(carry, exit_code=code, stderr_path=err, _staged=[{
+            "op": "upsert_finding", "key": "build-%s" % branch,
+            "title": "PR does not build (exit %d)" % code, "source": "review",
+            "repo": str(template(ctx.get("repo", ""), {})), "severity": "high",
+            "pattern": "red-build"}])
+    return "green", dict(carry, exit_code=0)

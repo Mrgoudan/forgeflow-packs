@@ -45,9 +45,10 @@ steps:
     schema: review_findings
     timeout_s: 1800
     context:
-      - payload
-      - bsc_manual                   # manual status; CHANGED overrides skills
-      - bsc_notes                    # subsystem code notes for touched files
+      - payload                      # incl. the PR's title + description (intent)
+      - probe_results                # which probes diverged in the sweep
+      - bsc_manual                   # manual status + TOC; CHANGED overrides skills
+      - bsc_notes                    # compiler-internals notes index (read on demand)
       - patterns                     # defect-class lenses for the AI to hunt
       - history
       - lessons: { task_kind: review }

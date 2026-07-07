@@ -71,7 +71,8 @@ def forge_poll_prs(ctx, task, prev):
                        "source_branch": pr["head"]["ref"],
                        "head_sha": pr["head"]["sha"],
                        "target_branch": pr["base"]["ref"],
-                       "title": str(pr.get("title", ""))[:200]}
+                       "title": str(pr.get("title", ""))[:300],
+                       "description": str(pr.get("body", ""))[:2000]}
         except (KeyError, TypeError, ValueError):
             continue           # malformed entry: skip, never guess
         staged.append({"op": "emit_event", "name": "pr.updated",

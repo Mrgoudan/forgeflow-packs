@@ -22,4 +22,6 @@ steps:
         base: "{payload.target_branch}"
         pr: "{payload.pr}"
         head_sha: "{payload.head_sha}"
+        title: "{payload.title}"
+        description: "{payload.description}"
     outcomes: { ok: done }

@@ -11,6 +11,7 @@ touched without the manual" is a diff name-list check. No guessing.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from forgeflow.blocks import block
@@ -18,6 +19,7 @@ from forgeflow.contract import context_provider
 from forgeflow.util import run_cmd
 
 _MAX_BYTES = 6000
+_HEADING = re.compile(r"^(#{1,4})\s+(.*)")
 
 
 def _git(env, repo, args, sub):
@@ -48,11 +50,21 @@ def _bsc_manual(env, task, spec):
     blob = blob.strip()
     pinned = params.get("manual_pinned_sha")
     code, content = _git(env, repo, ["show", ref], "manual-show")
-    excerpt = content[:_MAX_BYTES] if code == 0 else ""
+    # inject the TABLE OF CONTENTS (markdown headings), not a blind first-N
+    # slice (which was just the cover page). Lets the agent jump to the right
+    # section and open the file there.
+    toc = []
+    if code == 0:
+        for line in content.splitlines():
+            m = _HEADING.match(line)
+            if m:
+                toc.append("%s %s" % ("  " * (len(m.group(1)) - 1), m.group(2).strip()))
+    toc_text = "\n".join(toc)[:_MAX_BYTES]
     changed = bool(pinned) and blob != pinned
     note = ("The authoritative BiSheng C user manual is at %s in THIS "
             "checkout. It is ground truth and OVERRIDES any bsc-* skill that "
-            "disagrees — open the file for any rule you rely on. " % manual_path)
+            "disagrees. Its table of contents is below; open the file at the "
+            "section relevant to the code you review. " % manual_path)
     if changed:
         note += ("It CHANGED since the skills were validated (blob %s vs "
                  "pinned %s); treat skills as suspect where they differ."
@@ -60,7 +72,7 @@ def _bsc_manual(env, task, spec):
     return {"status": "CHANGED" if changed else "current",
             "authoritative": True, "manual_path": manual_path,
             "manual_blob": blob, "pinned_blob": pinned,
-            "note": note, "excerpt": excerpt}
+            "note": note, "toc": toc_text}
 
 
 @block("bsc.manual_gate", "state", {"ok", "flagged", "error", "timeout"},

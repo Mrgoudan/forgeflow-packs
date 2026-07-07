@@ -67,7 +67,7 @@ class BscGroundTruthTest(unittest.TestCase):
         r = CONTEXT_PROVIDERS["bsc_manual"](
             self._env(), {"payload": {"branch": "bsc-fix"}}, {})
         self.assertEqual(r["status"], "CHANGED")
-        self.assertIn("moved-from", r["excerpt"])
+        self.assertIn("Manual", r["toc"])          # TOC (headings), not cover page
 
     def test_gate_semantics_without_manual_flags(self):
         # a branch that touches semantics but NOT the manual

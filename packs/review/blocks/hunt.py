@@ -20,6 +20,7 @@ import subprocess
 from pathlib import Path
 
 from forgeflow.blocks import block
+from forgeflow.contract import context_provider
 from forgeflow.util import run_cmd, template
 
 
@@ -86,3 +87,24 @@ def hunt_probe_sweep(ctx, task, prev):
         carry, total=len(results), failed=len(fails),
         results=[{"id": r["id"], "outcome": r["outcome"]} for r in results],
         _staged=staged)
+
+
+@context_provider("probe_results")
+def _probe_results(env, task, spec):
+    """The probe sweep's outcomes for this branch, as review context: which
+    probes DIVERGED from their oracle against the PR build. A diverged probe
+    that exercises the changed code is strong evidence the diff altered
+    behavior — the agent should check whether it's intended."""
+    branch = (task.get("payload") or {}).get("branch", "")
+    prefix = "sweep-%s-" % branch
+    diverged = []
+    for r in env.conn.execute(
+            "SELECT key, pattern FROM findings WHERE source='review'"
+            " AND key LIKE 'sweep-' || ? || '-%' ORDER BY key", (branch,)):
+        diverged.append({"probe": r["key"][len(prefix):],
+                         "outcome": (r["pattern"] or "").replace("probe-", "")})
+    if not diverged:
+        return {"note": "All probes matched their oracle against the build."}
+    return {"note": "These probes DIVERGED from their recorded oracle against "
+                    "the PR build — determine whether the diff caused it.",
+            "diverged": diverged}

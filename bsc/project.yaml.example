@@ -1,0 +1,57 @@
+# BSC review pack — copy to project.yaml, fill machine-local values.
+# Reuses the generic review pack's blocks; adds BSC context + GLM agents.
+name: bsc
+
+paths:
+  repo:       /absolute/path/to/bsc/clone       # PR heads fetched here
+  manual:     /home/ziruichen/bsd/bisheng-c-manual   # the user manual (a git repo)
+  code_notes: /home/ziruichen/bsd/forgeflow-vault/bsc/code_notes
+
+tools:
+  git: { path: git, version_cmd: ["--version"] }
+
+workflows: [workflows]
+# reuse the generic review blocks by path, then add the BSC providers
+blocks:
+  - ../review/blocks/reviewblocks.py
+  - ../review/blocks/forge.py
+  - ../review/blocks/providers.py
+  - blocks/bsc.py
+
+prompts:
+  review: prompts/review.md
+  refute: prompts/refute.md
+schemas:
+  review_findings:  ../review/schemas/review_findings.yaml
+  refute_decisions: ../review/schemas/refute_decisions.yaml
+
+agents:
+  # GLM backing the AGENTIC claude CLI (so bsc-* skills + worktree work).
+  # Point the CLI at GLM's Anthropic-compatible endpoint by exporting these
+  # in the daemon environment (systemd EnvironmentFile, 0600):
+  #   ANTHROPIC_BASE_URL=https://<glm-anthropic-endpoint>
+  #   ANTHROPIC_AUTH_TOKEN=<glm-key>
+  # env_keys forwards them into the agent process; they never touch pack files.
+  review: { backend: claude-cli, model: glm-4.6,
+            env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  refute: { backend: claude-cli, model: glm-4.6,
+            env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+
+params:
+  # Manual-wins precedence: the rev the bsc-* skills were last validated
+  # against. While the manual's HEAD == this, skills are trusted; once the
+  # manual moves past it, changed sections become authoritative and override
+  # the skills. Bump this after re-validating skills against a new manual.
+  manual_pinned_rev: 1bb6c3fc76f1b8ae913b1021bc29b0333cf2ea8a
+
+  # touched-path-prefix -> code note file (under paths.code_notes)
+  subsystem_map:
+    clang/lib/Sema/BSC: BSCOwnership.md
+    clang/lib/Analysis/BSC: BSCBorrowChecker.md
+
+  # forge (gitee/gitcode v5 shape) — same as the generic review pack
+  prs_url:     "https://your-forge/api/v5/repos/OWNER/REPO/pulls?state=open"
+  comment_url: "https://your-forge/api/v5/repos/OWNER/REPO/pulls/{payload.request.pr}/comments"
+  forge_auth:  { token_ref: MAIN, style: query, name: access_token }
+  deny_patterns: ["BEGIN [A-Z]+ PRIVATE KEY"]
+  min_severity: medium

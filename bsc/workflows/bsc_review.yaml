@@ -1,0 +1,84 @@
+# BSC review: the generic industrial review pipeline, specialized for
+# BiSheng C — GLM-backed agent that loads bsc-* skills, with manual-wins
+# precedence injected at both the lens and the confirm (refute) stage.
+workflow: review
+consumes: [review.requested]
+emits: [review.completed, finding.triaged, finding.rejected]
+
+steps:
+  - name: workspace
+    block: worktree.create
+    timeout_s: 120
+    params: { repo: "{paths.repo}", base: "{payload.branch}" }
+    outcomes: { ok: diff, dirty: failed, timeout: failed }
+
+  - name: diff
+    block: review.diff
+    timeout_s: 60
+    params: { base: "{payload.base}" }
+    outcomes: { ok: prescan, empty: done, error: failed, timeout: failed }
+
+  - name: prescan
+    block: review.pattern_scan
+    timeout_s: 60
+    params: { repo: "{paths.repo}" }
+    context: [patterns]
+    outcomes: { clean: lens, hits: lens, timeout: failed }
+
+  - name: lens
+    block: agent.run
+    llm: review                      # -> GLM via claude-cli (skills load)
+    schema: review_findings
+    timeout_s: 1800
+    context:
+      - payload
+      - bsc_manual                   # manual status; CHANGED overrides skills
+      - bsc_notes                    # subsystem code notes for touched files
+      - history
+      - lessons: { task_kind: review }
+    outcomes:
+      FINDINGS: file
+      CLEAN: adjudicate
+      agent_limit: parked
+      agent_backend: parked
+      agent_invalid: adjudicate
+      timeout: adjudicate
+
+  - name: file
+    block: review.file_findings
+    timeout_s: 30
+    params: { repo: "{paths.repo}" }
+    outcomes: { ok: refute }
+
+  - name: refute
+    block: agent.run
+    llm: refute                      # -> GLM via claude-cli (skills load)
+    schema: refute_decisions
+    timeout_s: 1800
+    context:
+      - payload
+      - candidates
+      - bsc_manual                   # manual wins here too, at confirm time
+    outcomes:
+      DECIDED: adjudicate
+      NONE: adjudicate
+      agent_limit: parked
+      agent_backend: parked
+      agent_invalid: adjudicate
+      timeout: adjudicate
+
+  - name: adjudicate
+    block: review.adjudicate
+    timeout_s: 30
+    outcomes: { ok: announce }
+
+  - name: announce
+    block: event.emit
+    timeout_s: 10
+    params:
+      name: review.completed
+      data:
+        request: "{payload}"
+        confirmed: "{prev.confirmed}"
+        findings: "{prev.findings}"
+    outcomes: { ok: done }

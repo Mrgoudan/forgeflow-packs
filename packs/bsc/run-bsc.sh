@@ -29,4 +29,11 @@ set -a; . "$SECRETS"; set +a
 export FORGEFLOW_SECRETS="$SECRETS"
 export PYTHONPATH="$ENGINE${PYTHONPATH:+:$PYTHONPATH}"
 
+# BSC review is all-domestic (GLM bigmodel + gitcode). The machine's proxy
+# is for international egress and would HANG these endpoints — drop it so
+# the agent and forge calls go direct. (Override by exporting NO_PROXY_UNSET=1.)
+if [ -z "${NO_PROXY_UNSET:-}" ]; then
+  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+fi
+
 exec python3 -m forgeflow --root "$FF_ROOT" --pack "$PACK_DIR" "$@"

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Prove the manual-wins-on-change rule deterministically (no model needed).
+"""Prove the two ground-truth rules deterministically (no model needed),
+with the manual living INSIDE the reviewed repo:
 
-Builds a fake manual git repo, then shows the bsc_manual provider return:
-  pinned == HEAD  -> status 'current'  (trust the bsc-* skills)
-  manual moves    -> status 'CHANGED', authoritative, changed section text
-                     (the manual overrides any skill that disagrees)
+  bsc_manual provider:
+    manual blob == pinned  -> status 'current' (trust skills)
+    manual blob != pinned  -> status 'CHANGED' (manual overrides skills)
+  bsc.manual_gate block:
+    PR touches BSC semantics but NOT the manual -> machine finding
+    PR touches semantics AND the manual         -> ok
 
 Usage: ENGINE=~/bsd/forgeflow python3 scripts/demo_bsc_manual.py
 """
@@ -23,8 +26,12 @@ ENGINE = Path(os.environ.get("ENGINE", Path.home() / "bsd" / "forgeflow"))
 sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(HERE / "bsc" / "blocks"))
 
-import bsc  # noqa: E402  (registers the providers)
+import bsc  # noqa: E402 (registers provider + block)
+from forgeflow.blocks import run_isolated  # noqa: E402
 from forgeflow.contract import CONTEXT_PROVIDERS  # noqa: E402
+
+MANUAL = "clang/docs/BSC/BiShengCLanguageUserManual.md"
+SEMА = "clang/lib/Sema/BSC/SemaBSC.cpp"
 
 
 def git(cwd, *a):
@@ -32,55 +39,90 @@ def git(cwd, *a):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def blob(repo, ref):
+    return subprocess.run(["git", "-C", str(repo), "rev-parse", ref],
+                          stdout=subprocess.PIPE).stdout.decode().strip()
+
+
 def main():
     work = HERE / "demo-bsc-run"
     shutil.rmtree(str(work), ignore_errors=True)
     work.mkdir()
-    manual = work / "manual"
-    (manual / "src" / "chapter-3-memory-safety").mkdir(parents=True)
-    ownership = manual / "src" / "chapter-3-memory-safety" / "ownership.md"
-    ownership.write_text("# Ownership\nAn owned pointer is freed once.\n")
-    git(manual, "init", "-q")
-    git(manual, "config", "user.email", "d@d.invalid")
-    git(manual, "config", "user.name", "d")
-    git(manual, "add", "-A")
-    git(manual, "commit", "-qm", "manual v1")
-    rev1 = subprocess.run(["git", "-C", str(manual), "rev-parse", "HEAD"],
-                          stdout=subprocess.PIPE).stdout.decode().strip()
+    repo = work / "repo"
+    (repo / "clang/docs/BSC").mkdir(parents=True)
+    (repo / "clang/lib/Sema/BSC").mkdir(parents=True)
+    (repo / MANUAL).write_text("# BiSheng C Manual\nAn owned pointer is freed once.\n")
+    (repo / SEMА).write_text("// sema\n")
+    git(repo, "init", "-q")
+    git(repo, "symbolic-ref", "HEAD", "refs/heads/main")
+    git(repo, "config", "user.email", "d@d.invalid")
+    git(repo, "config", "user.name", "d")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "base")
+    pinned = blob(repo, "main:" + MANUAL)
 
-    provider = CONTEXT_PROVIDERS["bsc_manual"]
-
-    def env_for(pinned):
+    def env_for():
         pack = SimpleNamespace(
-            paths={"manual": str(manual)},
-            params={"manual_pinned_rev": pinned},
+            paths={"repo": str(repo)},
+            params={"manual_path": MANUAL, "manual_pinned_sha": pinned},
             tools={})
         return SimpleNamespace(pack=pack, data_dir=str(work / "data"))
 
-    task = {"id": 1, "attempts": 0, "payload": {}}
+    prov = CONTEXT_PROVIDERS["bsc_manual"]
 
-    print("=== manual UNCHANGED (pinned == HEAD) ===")
-    r1 = provider(env_for(rev1), task, {})
-    print(json.dumps({k: r1[k] for k in ("status", "note")}, indent=1))
-    assert r1["status"] == "current"
+    # branch A: updates semantics AND the manual
+    git(repo, "checkout", "-qb", "good")
+    (repo / SEMА).write_text("// sema v2: reject double free\n")
+    (repo / MANUAL).write_text("# BiSheng C Manual\nAn owned pointer is freed "
+                               "once; freeing a moved-from pointer is UB.\n")
+    git(repo, "commit", "-aqm", "semantics + manual")
+    git(repo, "checkout", "-q", "main")
 
-    # the manual moves: ownership rule refined
-    ownership.write_text("# Ownership\nAn owned pointer is freed once; a "
-                         "moved-from pointer must not be freed AGAIN.\n")
-    git(manual, "commit", "-aqm", "manual v2: clarify double-free on move")
+    # branch B: updates semantics but NOT the manual
+    git(repo, "checkout", "-qb", "bad")
+    (repo / SEMА).write_text("// sema v3: silent change\n")
+    git(repo, "commit", "-aqm", "semantics only")
+    git(repo, "checkout", "-q", "main")
 
-    print("\n=== manual CHANGED (pinned still v1) ===")
-    r2 = provider(env_for(rev1), task, {})
-    print("status:", r2["status"], " authoritative:", r2["authoritative"])
-    print("note:", r2["note"])
-    print("changed_files:", r2["changed_files"])
-    print("authoritative section text:")
-    print("  " + r2["changed_sections"][0]["text"].replace("\n", "\n  "))
-    assert r2["status"] == "CHANGED" and r2["authoritative"] is True
-    assert any("moved-from" in s["text"] for s in r2["changed_sections"])
+    print("=== bsc_manual on branch 'good' (manual updated) ===")
+    r = prov(env_for(), {"payload": {"branch": "good"}}, {})
+    print("status:", r["status"], " authoritative:", r["authoritative"])
+    assert r["status"] == "CHANGED"          # manual differs from pinned
+    assert "moved-from" in r["excerpt"]
 
-    print("\nMANUAL-WINS RULE: OK  (unchanged -> trust skills;"
-          " changed -> manual authoritative, overrides skills)")
+    print("=== bsc_manual on 'main' (manual == pinned) ===")
+    r0 = prov(env_for(), {"payload": {"branch": "main"}}, {})
+    print("status:", r0["status"])
+    assert r0["status"] == "current"
+
+    print("\n=== manual_gate on 'good' (semantics + manual) -> ok ===")
+    out, res = run_isolated(
+        "bsc.manual_gate",
+        {"repo": str(repo), "manual_path": MANUAL,
+         "semantics_prefixes": ["clang/lib/Sema/BSC"], "_tools": {}},
+        task={"id": 1, "attempts": 0,
+              "payload": {"base": "main", "branch": "good"}},
+        prev={"path": "/ws"})
+    print("outcome:", out, " staged:", "_staged" in res)
+    assert out == "ok" and "_staged" not in res
+
+    print("=== manual_gate on 'bad' (semantics, NO manual) -> flagged ===")
+    out, res = run_isolated(
+        "bsc.manual_gate",
+        {"repo": str(repo), "manual_path": MANUAL,
+         "semantics_prefixes": ["clang/lib/Sema/BSC"], "_tools": {}},
+        task={"id": 2, "attempts": 0,
+              "payload": {"base": "main", "branch": "bad"}},
+        prev={"path": "/ws"})
+    print("outcome:", out)
+    print("finding:", res["_staged"][0]["title"])
+    assert out == "flagged"
+    assert res["_staged"][0]["key"] == "pattern-bad-manual-not-updated"
+
+    print("\nBSC GROUND-TRUTH RULES: OK")
+    print("  manual (in-repo) changed -> overrides skills")
+    print("  manual unchanged         -> trust skills")
+    print("  semantics changed w/o manual update -> machine finding (must update first)")
 
 
 if __name__ == "__main__":

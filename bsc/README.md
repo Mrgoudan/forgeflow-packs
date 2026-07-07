@@ -14,21 +14,36 @@ Specializes the generic [review](../review) pipeline for BiSheng C:
   nullability, safe-zone, …) and inject `bsc_notes` (subsystem code notes)
   and `history` (prior defects in the touched files).
 
-- **Manual wins on change.** The `bsc_manual` provider compares the user
-  manual's git rev to `manual_pinned_rev` (the rev the skills were validated
-  against). Unchanged → trust the skills. Changed → the changed manual
-  sections are injected as **authoritative** and override any skill that
-  disagrees. Deterministic (git revs), proven by
-  `scripts/demo_bsc_manual.py`.
+- **Manual is ground truth, in the reviewed repo.** It lives at
+  `clang/docs/BSC/BiShengCLanguageUserManual.md` INSIDE the repo. The
+  `bsc_manual` provider reads it at the branch head (so it reflects the
+  manual as updated in this PR) and injects it as **authoritative** —
+  it overrides any bsc-* skill that disagrees. If its blob differs from
+  `manual_pinned_sha` (the version the skills were validated against) it is
+  flagged `CHANGED`: skills are then suspect where they differ.
+
+- **Manual must be updated before review.** The no-AI `bsc.manual_gate`
+  step flags any PR that touches a BSC `semantics_prefix`
+  (`clang/lib/Sema/BSC`, …) but does NOT touch the manual — a machine
+  finding, since the manual is ground truth and must move with semantics.
+
+All three rules are deterministic (git blob hashes + diff name lists) and
+proven by `scripts/demo_bsc_manual.py`.
 
 ## Setup
 
 ```bash
-cp bsc/project.yaml.example bsc/project.yaml   # fill paths.repo + forge params
-# daemon environment (systemd EnvironmentFile, 0600):
-export ANTHROPIC_BASE_URL=https://<glm-anthropic-endpoint>
-export ANTHROPIC_AUTH_TOKEN=<glm-key>
-python3 -m forgeflow --root ~/ff-bsc --pack bsc validate
+# 1. secrets — copy the env file, fill your GLM key + forge token, lock it
+cp bsc/secrets.env.example ~/.config/forgeflow/secrets.env
+$EDITOR ~/.config/forgeflow/secrets.env
+chmod 600 ~/.config/forgeflow/secrets.env
+
+# 2. pack config — fill paths.repo (the reviewed repo) + forge params
+cp bsc/project.yaml.example bsc/project.yaml
+
+# 3. run via the wrapper (sources secrets so GLM env + forge token both flow)
+./bsc/run-bsc.sh validate
+./bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
 ```
 
 Everything else (pipeline, egress, degraded mode, tuning) is the review
@@ -36,8 +51,10 @@ pack's [RUNBOOK](../review/RUNBOOK.md).
 
 ## Proven vs pending
 
-- Proven (no model): manual-wins precedence, pack loads/validates end to end.
-- Pending your GLM endpoint + token: the live GLM review. Do the first run
-  with `FORGE_WRITE` unset (archive-only) to confirm before posting.
+- Proven (no model): manual-wins precedence, the semantics-without-manual
+  gate, and the whole pack loads/validates end to end.
+- Pending your GLM endpoint + token: the live GLM review. First run with
+  `FORGE_WRITE` unset (archive-only) to confirm forge field shapes.
 - After changing the manual, re-validate the skills and bump
-  `manual_pinned_rev`.
+  `manual_pinned_sha` (get it with
+  `git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md`).

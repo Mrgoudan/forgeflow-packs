@@ -3,8 +3,7 @@
 name: bsc
 
 paths:
-  repo:       /absolute/path/to/bsc/clone       # PR heads fetched here
-  manual:     /home/ziruichen/bsd/bisheng-c-manual   # the user manual (a git repo)
+  repo:       /home/ziruichen/bsd/llvm-project-dup   # the reviewed repo (PR heads fetched here)
   code_notes: /home/ziruichen/bsd/forgeflow-vault/bsc/code_notes
 
 tools:
@@ -38,11 +37,23 @@ agents:
             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:
-  # Manual-wins precedence: the rev the bsc-* skills were last validated
-  # against. While the manual's HEAD == this, skills are trusted; once the
-  # manual moves past it, changed sections become authoritative and override
-  # the skills. Bump this after re-validating skills against a new manual.
-  manual_pinned_rev: 1bb6c3fc76f1b8ae913b1021bc29b0333cf2ea8a
+  # The user manual is a file INSIDE the reviewed repo — ground truth.
+  manual_path: clang/docs/BSC/BiShengCLanguageUserManual.md
+
+  # Manual-wins precedence: the manual blob the bsc-* skills were validated
+  # against. While the manual at the PR head == this, skills are trusted;
+  # once it differs, the manual is flagged CHANGED and overrides the skills.
+  # Get it with:  git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md
+  # Bump after re-validating skills against a new manual.
+  manual_pinned_sha: 637bd165d0f4cfab13fbc021dc08ad2b199aad58
+
+  # A PR touching any of these but NOT the manual is flagged (manual must be
+  # updated before review — it is ground truth).
+  semantics_prefixes:
+    - clang/lib/Sema/BSC
+    - clang/lib/Analysis/BSC
+    - clang/lib/CodeGen/BSC
+    - clang/lib/Parse
 
   # touched-path-prefix -> code note file (under paths.code_notes)
   subsystem_map:

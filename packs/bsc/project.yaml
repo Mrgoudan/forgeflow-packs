@@ -17,6 +17,7 @@ blocks:
   - ../review/blocks/providers.py
   - ../review/blocks/hunt.py
   - blocks/bsc.py
+  - blocks/ingest.py
 
 prompts:
   review: prompts/review.md

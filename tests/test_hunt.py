@@ -84,6 +84,24 @@ class ProbeSweepTest(unittest.TestCase):
         outcome, res = self._sweep()
         self.assertEqual(outcome, "error")
 
+    def test_head_vs_base_flip(self):
+        # record base outputs, then diff after the "compiler" changes behavior
+        self._probe("stable", "same\n", "ignored")
+        self._probe("changes", "before\n", "ignored")
+        baseline = str(self.dir / "bl")
+        o, _ = self._sweep(mode="record", baseline_dir=baseline)
+        self.assertEqual(o, "clean")
+        # now the compiler emits different output ONLY for 'changes'
+        self.cc.write_text('#!/bin/sh\ncase "$1" in *changes*) echo after 1>&2;; '
+                           '*) cat "$1" 1>&2;; esac\n')
+        self.cc.chmod(0o755)
+        o, res = self._sweep(mode="diff", baseline_dir=baseline)
+        self.assertEqual(o, "findings")
+        keys = [op["key"] for op in res["_staged"]]
+        self.assertEqual(keys, ["sweep-b-changes"])            # only the flip
+        self.assertEqual(res["_staged"][0]["pattern"], "probe-flip")
+        self.assertIn("base", res["_staged"][0]["title"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,6 +38,9 @@ if "adversarial reviewer" in prompt or "REFUTE" in prompt:
                               "reason": "cannot construct a reachable failure "
                                         "from the diff; speculative"})
     print(envelope(block({"verdict": "DECIDED", "decisions": decisions})))
+elif "_test_clean" in prompt:
+    # lens mode, clean case: find nothing
+    print(envelope(block({"verdict": "CLEAN", "findings": []})))
 else:
     # lens mode: propose two candidates (one solid, one weak)
     print(envelope(block({

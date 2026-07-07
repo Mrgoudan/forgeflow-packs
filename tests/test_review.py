@@ -113,6 +113,19 @@ class ReviewPipelineTest(unittest.TestCase):
         self.assertIn("## context: history", prompt)
         self.assertIn("F-old", prompt)
 
+    def test_clean_review_still_posts_no_defects(self):
+        # always post something: a CLEAN review posts a "no defects" comment
+        eng = self._eng()
+        db.emit_event(eng.conn, "review.requested",
+                      {"branch": "feature-discount", "base": "main", "pr": 7,
+                       "head_sha": self.head, "_test_clean": True},
+                      eng.subscriptions)
+        eng.run_until_idle()
+        self.assertEqual(len(self.forge.comments), 1)         # posted, not skipped
+        self.assertIn("No defects found", self.forge.comments[0]["body"])
+        n = eng.conn.execute("SELECT count(*) c FROM findings").fetchone()["c"]
+        self.assertEqual(n, 0)
+
     def test_degraded_backend_down_parks(self):
         cli = dead_cli(self.base / "dead.py")
         eng = self._eng(cli=cli)

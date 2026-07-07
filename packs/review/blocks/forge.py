@@ -120,13 +120,14 @@ def publish_comment(ctx, task, prev):
     rank = {"low": 1, "medium": 2, "high": 3}
     floor = rank.get(ctx.get("min_severity", "low"), 0)
     posted = [f for f in findings if rank.get(f.get("severity"), 1) >= floor]
-    if not posted:
-        return "skipped", {"reason": "no findings at or above min_severity",
-                           "considered": len(findings)}
+    # ALWAYS post a result. Findings -> list them; nothing -> say so.
     body = _tpl(ctx["body_header"], ctx, task, prev) + "\n\n"
-    for f in posted:
-        body += "- [%s] %s\n" % (f.get("severity", "?"),
-                                 f.get("title", "untitled"))
+    if posted:
+        for f in posted:
+            body += "- [%s] %s\n" % (f.get("severity", "?"),
+                                     f.get("title", "untitled"))
+    else:
+        body += "No defects found."
     for pattern in ctx.get("deny_patterns", ()):
         if re.search(pattern, body):
             return "leak_blocked", {"pattern": pattern}

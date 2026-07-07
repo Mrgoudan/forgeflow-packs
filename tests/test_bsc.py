@@ -146,9 +146,7 @@ class BscAiMandatoryTest(unittest.TestCase):
         return make_engine(self.base / ("ff-%s" % id(cli)),
                            write_pack(self.base, self.repo, self.pinned, cli))
 
-    def _seed_and_run(self, eng):
-        eng.conn.execute("INSERT INTO patterns(id, description, grep_rule)"
-                         " VALUES ('fixme','x','FIXME')")
+    def _run(self, eng):
         queue.enqueue(eng.conn, "review",
                       {"branch": "bsc-fix", "base": "main", "pr": None,
                        "head_sha": self.head})
@@ -156,32 +154,34 @@ class BscAiMandatoryTest(unittest.TestCase):
 
     def test_ai_works_full_pipeline(self):
         eng = self._eng(FAKE_AGENT)
-        self._seed_and_run(eng)
+        self._run(eng)
         t = eng.conn.execute("SELECT state FROM tasks WHERE kind='review'").fetchone()
         self.assertEqual(t["state"], "done")
+        # AI-only pipeline: no prescan / no machine code-review step
         steps = [r["step"] for r in eng.conn.execute(
             "SELECT step FROM task_steps WHERE task_id=1 ORDER BY rowid")]
-        self.assertEqual(steps, ["workspace", "diff", "gate", "prescan", "lens",
+        self.assertEqual(steps, ["workspace", "diff", "gate", "lens",
                                  "file", "refute", "adjudicate", "announce"])
         f = {r["key"]: r["state"] for r in eng.conn.execute(
             "SELECT key, state FROM findings")}
+        # every finding came from the AI (review-*), vetted by refutation
         self.assertEqual(f.get("review-bsc-fix-0"), "triaged")
         self.assertEqual(f.get("review-bsc-fix-1"), "rejected")
+        self.assertFalse(any(k.startswith("pattern-") for k in f))  # no no-AI findings
         prompt = (list((self.base).glob("ff-*/data/runs/1/ask0/prompt"))[0]).read_text()
         self.assertIn("## context: bsc_manual", prompt)
 
-    def test_ai_down_parks_and_requeues(self):
+    def test_ai_down_parks_with_nothing(self):
         cli = dead_cli(self.base / "dead.py")
         eng = self._eng(cli)
-        self._seed_and_run(eng)
+        self._run(eng)
         t = eng.conn.execute("SELECT state, error_class FROM tasks"
                              " WHERE kind='review'").fetchone()
         self.assertEqual(t["state"], "parked")            # queued for another run
-        f = {r["key"]: r["state"] for r in eng.conn.execute(
-            "SELECT key, state FROM findings")}
-        self.assertFalse(any(k.startswith("review-") for k in f))  # no unvetted
-        self.assertTrue(any(k.startswith("pattern-bsc-fix-fixme") and s == "found"
-                            for k, s in f.items()))       # filed, not posted
+        # AI-only: with the model down there is NO output at all — no
+        # machine findings, nothing posted. The review must have AI.
+        n = eng.conn.execute("SELECT count(*) c FROM findings").fetchone()["c"]
+        self.assertEqual(n, 0)
         self.assertEqual(queue.unpark(eng.conn), 1)       # unpark re-queues it
 
 

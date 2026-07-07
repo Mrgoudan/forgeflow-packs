@@ -1,6 +1,8 @@
-# BSC review: the generic industrial review pipeline, specialized for
-# BiSheng C — GLM-backed agent that loads bsc-* skills, with manual-wins
-# precedence injected at both the lens and the confirm (refute) stage.
+# BSC review — AI-ONLY. There is no no-AI/machine-only path: the review is
+# done by the GLM agent (lens) and adversarially confirmed by the agent
+# (refute). If the AI breaks down the review PARKS and is re-queued; it
+# never produces or posts findings without AI. The only deterministic step
+# is the manual gate — a governance precondition, not a code review.
 workflow: review
 consumes: [review.requested]
 emits: [review.completed, finding.triaged, finding.rejected]
@@ -18,24 +20,17 @@ steps:
     params: { base: "{payload.base}" }
     outcomes: { ok: gate, empty: done, error: failed, timeout: failed }
 
-  - name: gate                       # no-AI: manual must be updated when
-    block: bsc.manual_gate           # BSC semantics change (ground-truth rule)
-    timeout_s: 60
+  - name: gate                       # governance precondition (not a review):
+    block: bsc.manual_gate           # the manual must be updated when BSC
+    timeout_s: 60                    # semantics change (ground-truth rule)
     params:
       repo: "{paths.repo}"
       manual_path: "{pack.manual_path}"
       semantics_prefixes: "{pack.semantics_prefixes}"
-    outcomes: { ok: prescan, flagged: prescan, error: failed, timeout: failed }
+    outcomes: { ok: lens, flagged: lens, error: failed, timeout: failed }
 
-  - name: prescan
-    block: review.pattern_scan
-    timeout_s: 60
-    params: { repo: "{paths.repo}" }
-    context: [patterns]
-    outcomes: { clean: lens, hits: lens, timeout: failed }
-
-  - name: lens
-    block: agent.run
+  - name: lens                       # AI review — the ONLY thing that finds
+    block: agent.run                 # code defects. No machine-only fallback.
     llm: review                      # -> GLM via claude-cli (skills load)
     schema: review_findings
     timeout_s: 1800
@@ -43,6 +38,7 @@ steps:
       - payload
       - bsc_manual                   # manual status; CHANGED overrides skills
       - bsc_notes                    # subsystem code notes for touched files
+      - patterns                     # defect-class lenses for the AI to hunt
       - history
       - lessons: { task_kind: review }
     outcomes:

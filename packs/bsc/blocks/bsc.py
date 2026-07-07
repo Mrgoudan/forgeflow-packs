@@ -73,10 +73,34 @@ def _bsc_manual(env, task, spec):
         note += ("It CHANGED since the skills were validated (blob %s vs "
                  "pinned %s); treat skills as suspect where they differ."
                  % (blob[:12], pinned[:12]))
-    return {"status": "CHANGED" if changed else "current",
-            "authoritative": True, "manual_path": manual_path,
-            "manual_blob": blob, "pinned_blob": pinned,
-            "note": note, "toc": toc_text}
+    # Soft signal (NOT an auto-finding): does the diff change BSC semantics
+    # without touching the manual? Most compiler fixes legitimately don't
+    # need a manual edit; the AI decides whether THIS change alters
+    # documented language behavior. That judgment can't be a blind gate.
+    base = (task.get("payload") or {}).get("base")
+    sem_no_manual = []
+    prefixes = params.get("semantics_prefixes") or []
+    if base and branch and prefixes:
+        code, names = _git(env, repo, ["diff", "--name-only",
+                                       "%s...%s" % (base, branch)], "manual-diff")
+        if code == 0:
+            touched = names.split()
+            if manual_path not in touched:
+                sem_no_manual = [p for p in touched
+                                 if any(p.startswith(pre) for pre in prefixes)][:8]
+    result = {"status": "CHANGED" if changed else "current",
+              "authoritative": True, "manual_path": manual_path,
+              "manual_blob": blob, "pinned_blob": pinned,
+              "note": note, "toc": toc_text}
+    if sem_no_manual:
+        result["semantics_changed_without_manual"] = sem_no_manual
+        result["manual_note"] = (
+            "This PR changes BSC semantics in %s but does NOT update the "
+            "manual. Only raise this if the change alters DOCUMENTED language "
+            "behavior (new/changed syntax, rules, or user-facing semantics). "
+            "Internal diagnostic/analysis fixes normally need no manual update "
+            "— do not flag those." % ", ".join(sem_no_manual))
+    return result
 
 
 @block("bsc.manual_gate", "state", {"ok", "flagged", "error", "timeout"},

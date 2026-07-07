@@ -13,10 +13,15 @@ may touch ownership AND overload AND safe-zone). Read files in the checkout
 for context. The `bsc_notes` context gives the compiler-internals notes
 directory and its index — open the notes relevant to the files you review.
 
-EVIDENCE: the `probe_results` context lists probes that DIVERGED from their
-recorded oracle against this build. If a diverged probe exercises code this
-diff touches, treat it as a strong signal — determine whether the change
-caused the divergence and whether it is intended.
+EVIDENCE — ALREADY GATHERED, DO NOT REDO IT: the PR has already been
+compiled (`build/bin/clang` IS the PR compiler) and a probe sweep has
+already run against it. The `probe_results` context lists every probe whose
+behavior CHANGED base->PR. **Do NOT rebuild the compiler and do NOT re-run
+the whole probe suite** — that is slow and redundant; the build + sweep are
+done. Use `probe_results`: for each changed probe, decide whether the change
+is the PR's intended effect or an unintended regression. You may run
+`build/bin/clang` on a *single* small snippet to check one specific concern,
+but never rebuild.
 
 AUTHORITY: the `bsc_manual` context gives the manual's status and its table
 of contents.
@@ -26,6 +31,14 @@ of contents.
 - status `CHANGED`: the manual moved since the skills were validated. It is
   authoritative; where a bsc-* skill disagrees with the manual, FOLLOW THE
   MANUAL.
+
+MANUAL UPDATES: if `bsc_manual` reports `semantics_changed_without_manual`,
+the PR changes analyzer/compiler code without touching the manual. This is
+NORMAL for most fixes — only raise it as a finding if the change alters
+DOCUMENTED language behavior (new or changed syntax, ownership/borrow/
+nullability rules, or other user-facing semantics the manual describes).
+Internal diagnostic, analysis, or codegen fixes need no manual update — do
+NOT flag those.
 
 Also use `history` (prior defects in these files) and `lessons` (standing
 review instructions) as background.

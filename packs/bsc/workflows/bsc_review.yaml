@@ -18,16 +18,11 @@ steps:
     block: review.diff
     timeout_s: 60
     params: { base: "{payload.base}" }
-    outcomes: { ok: gate, empty: done, error: failed, timeout: failed }
+    outcomes: { ok: ensure_base, empty: done, error: failed, timeout: failed }
 
-  - name: gate                       # governance precondition (not a review):
-    block: bsc.manual_gate           # the manual must be updated when BSC
-    timeout_s: 60                    # semantics change (ground-truth rule)
-    params:
-      repo: "{paths.repo}"
-      manual_path: "{pack.manual_path}"
-      semantics_prefixes: "{pack.semantics_prefixes}"
-    outcomes: { ok: ensure_base, flagged: ensure_base, error: failed, timeout: failed }
+  # (no separate manual gate: "semantics changed without a manual update" is
+  # now a soft signal in the bsc_manual context — the AI judges whether the
+  # change alters DOCUMENTED behavior, instead of flagging every compiler fix.)
 
   - name: ensure_base                # before each review: pull base + ensure
     block: bsc.ensure_base           # the base baseline. Cached (base

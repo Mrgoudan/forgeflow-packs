@@ -16,9 +16,13 @@ from pathlib import Path
 
 from forgeflow.blocks import block
 from forgeflow.contract import context_provider
-from forgeflow.util import run_cmd
+from forgeflow.util import run_cmd, template
 
 _MAX_BYTES = 6000
+
+
+def _t(value, task, prev):
+    return template(value, {"payload": task.get("payload") or {}, "prev": prev or {}})
 _HEADING = re.compile(r"^(#{1,4})\s+(.*)")
 
 
@@ -126,3 +130,45 @@ def _bsc_notes(env, task, spec):
             "index": index.read_text(errors="replace")[:8000] if index.is_file() else "",
             "note": "BSC compiler-internals notes live in `dir` (see `index`). "
                     "Open the ones relevant to the files you are reviewing."}
+
+
+@block("bsc.ensure_base", "local", {"cached", "built", "error", "timeout"},
+       required_params={"repo", "build_dir", "baseline_root"})
+def bsc_ensure_base(ctx, task, prev):
+    """Ensure the base baseline is current, before each review. Pulls the
+    base branch (git pull --ff-only — a no-op when nothing changed) and
+    checks the baseline cache keyed by base rev:
+      cached — base unchanged, baseline already recorded: FREE, skip rebuild.
+      built  — base advanced (or first run): base clang rebuilt; the next
+               step records its baseline.
+    This is why refreshing every review is cheap: unchanged base = cache hit.
+    """
+    repo = _t(ctx["repo"], task, prev)
+    build_dir = _t(ctx["build_dir"], task, prev)
+    baseline_root = _t(ctx["baseline_root"], task, prev)
+    base = (task.get("payload") or {}).get("base", "HEAD")
+    sd = Path(ctx["_step_dir"])
+    tools = ctx.get("_tools")
+    carry = {"path": (prev or {}).get("path"),
+             "diff_file": (prev or {}).get("diff_file")}
+
+    code, _o, err = run_cmd(["git", "-C", repo, "checkout", base], 120,
+                            sd / "checkout", tools=tools)
+    if code != 0:
+        return "error", dict(carry, reason="checkout %s failed" % base,
+                             stderr_path=err)
+    # pull latest base; tolerate failure (offline / no upstream)
+    run_cmd(["git", "-C", repo, "pull", "--ff-only"], 300, sd / "pull", tools=tools)
+    code, out, _e = run_cmd(["git", "-C", repo, "rev-parse", base], 30,
+                            sd / "rev", tools=tools)
+    base_rev = Path(out).read_text().strip() if code == 0 else "unknown"
+    bdir = Path(baseline_root) / base_rev
+    carry["base_rev"] = base_rev
+    if any(bdir.glob("*.out")):
+        return "cached", carry            # unchanged base -> no rebuild, free
+    # base advanced: rebuild base clang (the record step snapshots it)
+    code, _o, err = run_cmd(["ninja", "-C", build_dir, "clang"],
+                            ctx["_timeout_s"], sd / "build", tools=tools)
+    if code != 0:
+        return "error", dict(carry, exit_code=code, stderr_path=err)
+    return "built", carry

@@ -168,8 +168,9 @@ class BscAiMandatoryTest(unittest.TestCase):
         # AI-only pipeline: no prescan / no machine code-review step
         steps = [r["step"] for r in eng.conn.execute(
             "SELECT step FROM task_steps WHERE task_id=1 ORDER BY rowid")]
-        self.assertEqual(steps, ["workspace", "diff", "gate", "build", "sweep",
-                                 "lens", "file", "refute", "adjudicate", "announce"])
+        self.assertEqual(steps, ["workspace", "diff", "gate", "ensure_base",
+                                 "build", "sweep", "lens", "file", "refute",
+                                 "adjudicate", "announce"])
         f = {r["key"]: r["state"] for r in eng.conn.execute(
             "SELECT key, state FROM findings")}
         # every finding came from the AI (review-*), vetted by refutation

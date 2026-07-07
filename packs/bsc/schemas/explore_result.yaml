@@ -1,0 +1,26 @@
+# Explorer output contract (HUNT.md Mode 1: notes BEFORE probing). The
+# verdict routes; the note is the required function reading; the finding is
+# the proposed bug (only on CONFIRMED_NEW) that the verification oracle runs.
+type: object
+required: [verdict, note]
+properties:
+  verdict: { enum: [CONFIRMED_NEW, NO_NEW_PATTERN, SATURATED] }
+  note:
+    type: object
+    required: [object, invariant]
+    properties:
+      object:     { type: string }              # the function/file read
+      invariant:  { type: string }              # one-sentence promise
+      candidates: { type: array, items: { type: string } }   # 3 ranked lenses
+  finding:
+    type: object
+    required: [key, title, probe, expect_error]
+    properties:
+      key:            { type: string }
+      title:          { type: string }
+      pattern:        { type: string }
+      severity:       { enum: [low, medium, high] }
+      probe:          { type: string }          # a .cbs source that triggers it
+      expect_error:   { type: boolean }          # SHOULD the compiler reject it?
+      expect_contains: { type: string }          # diagnostic text it should contain
+      grep_rule:      { type: string }           # optional machine-checkable rule

@@ -1,0 +1,39 @@
+# Campaign start: seed the regions + methods bench, build base clang once,
+# run the no-AI finders (probe regression sweep), then kick off the explorer
+# auto-swap loop. Trigger with: emit hunt.round_requested {base: <branch>}.
+workflow: hunt_round
+consumes: [hunt.round_requested]
+emits: [hunt.explore_requested]
+
+steps:
+  - name: seed
+    block: hunt.seed
+    timeout_s: 30
+    params:
+      repo: "{paths.repo}"
+      regions: "{pack.hunt_regions}"
+      methods: "{pack.hunt_methods}"
+    outcomes: { ok: build_base }
+
+  - name: build_base                 # base clang once for the whole campaign
+    block: shell.run
+    timeout_s: 7200
+    params: { cmd: "{pack.refresh_cmd}" }
+    outcomes: { ok: sweep, nonzero: failed, mismatch: failed, timeout: failed }
+
+  - name: sweep                      # no-AI finder: probe regressions vs oracle
+    block: hunt.probe_sweep
+    timeout_s: 900
+    params:
+      mode: oracle
+      probes_dir: "{pack.probes_dir}"
+      cmd: "{pack.probe_cmd}"
+      max_workers: "{pack.probe_workers}"
+      repo: "{paths.repo}"
+    outcomes: { clean: kick, findings: kick, error: kick, timeout: kick }
+
+  - name: kick                       # start the explorer loop
+    block: event.emit
+    timeout_s: 10
+    params: { name: hunt.explore_requested, data: { round: 0 } }
+    outcomes: { ok: done }

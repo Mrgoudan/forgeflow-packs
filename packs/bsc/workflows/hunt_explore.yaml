@@ -1,0 +1,51 @@
+# One Explorer turn (HUNT.md): lease a disjoint region, read a function +
+# propose ONE candidate defect, verify it against base clang, merge. The
+# merge step auto-swaps — it emits the next hunt.explore_requested — so this
+# workflow is the continuous explore loop, bounded by region cooldowns and
+# campaign saturation. A confirm also emits hunt.pattern_confirmed (exploiter).
+workflow: hunt_explore
+consumes: [hunt.explore_requested]
+emits: [hunt.explore_requested, hunt.pattern_confirmed]
+
+steps:
+  - name: pick_region
+    block: hunt.pick_region
+    timeout_s: 30
+    params: { max_explorers: "{pack.hunt_max_explorers}" }
+    outcomes: { leased: explore, saturated: done }
+
+  - name: explore                    # GLM explorer (reads region, proposes)
+    block: agent.run
+    llm: explore
+    schema: explore_result
+    timeout_s: 1800
+    context:
+      - hunt_region                  # leased region + its readings/chains
+      - hunt_method                  # the bandit-selected detection method
+      - bsc_manual                   # authoritative correct behavior
+      - patterns                     # known defect classes (don't re-file)
+      - lessons: { task_kind: bughunt }
+    outcomes:
+      CONFIRMED_NEW: verify
+      NO_NEW_PATTERN: merge
+      SATURATED: merge
+      agent_limit: parked
+      agent_backend: parked
+      agent_invalid: merge
+      timeout: merge
+
+  - name: verify                     # the verification oracle (non-negotiable)
+    block: hunt.verify_candidate
+    timeout_s: 300
+    params:
+      repo: "{paths.repo}"
+      clang: "{pack.hunt_clang}"
+      include: "{pack.probe_include}"
+    outcomes: { confirmed: merge, refuted: merge, no_candidate: merge,
+                error: merge, timeout: merge }
+
+  - name: merge                      # dispatch: file/credit + auto-swap
+    block: hunt.merge_explore
+    timeout_s: 30
+    params: { repo: "{paths.repo}" }
+    outcomes: { confirmed: done, dry: done, done: done }

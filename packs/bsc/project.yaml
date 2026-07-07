@@ -18,22 +18,31 @@ blocks:
   - ../review/blocks/hunt.py
   - blocks/bsc.py
   - blocks/ingest.py
+  - blocks/conductor.py
 
 prompts:
   review: prompts/review.md
   refute: prompts/refute.md
+  explore: prompts/explorer.md
+  exploit: prompts/exploiter.md
 schemas:
   review_findings:  ../review/schemas/review_findings.yaml
   refute_decisions: ../review/schemas/refute_decisions.yaml
+  explore_result:   schemas/explore_result.yaml
+  exploit_result:   schemas/exploit_result.yaml
 
 agents:
   # GLM behind the agentic claude CLI (so bsc-* skills + worktree work).
   # ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN come from the sourced secrets
   # file (run-bsc.sh) and are forwarded into the agent by env_keys.
-  review: { backend: claude-cli, model: GLM-5.2,
-            env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
-  refute: { backend: claude-cli, model: GLM-5.2,
-            env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  review:  { backend: claude-cli, model: GLM-5.2,
+             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  refute:  { backend: claude-cli, model: GLM-5.2,
+             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  explore: { backend: claude-cli, model: GLM-5.2,
+             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  exploit: { backend: claude-cli, model: GLM-5.2,
+             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:
   # user manual = ground truth, inside the reviewed repo
@@ -86,3 +95,22 @@ params:
   deny_patterns:
     - "BEGIN [A-Z]+ PRIVATE KEY"
   min_severity: medium
+
+  # --- bughunt (HUNT.md: Conductor/Explorer/Exploiter/oracle-bench) --------
+  hunt_max_explorers: 6              # concurrent region-lease cap
+  hunt_clang: "{paths.repo}/build/bin/clang"   # base compiler the oracle runs
+  probe_include: "{paths.repo}/libcbs/src/bishengc_safety"
+  # the explore surface — disjoint regions leased one Explorer at a time
+  hunt_regions:
+    - clang/lib/Sema/BSC
+    - clang/lib/Analysis/BSC
+    - clang/lib/AST/BSC
+    - clang/lib/Parse/BSC
+    - libcbs
+  # the detection-method bench (how candidates get GENERATED). The
+  # verification oracle is separate and never rotates. Bandit-selected.
+  hunt_methods:
+    - { id: invariant-probe,  description: "probe a function's stated invariant directly" }
+    - { id: metamorphic-flip, description: "a transform that must not change the verdict but does" }
+    - { id: composition,      description: "two analyses disagreeing on one construct" }
+    - { id: reachability-gap, description: "an unhandled path a sibling case handles" }

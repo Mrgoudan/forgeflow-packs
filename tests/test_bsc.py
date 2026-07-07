@@ -115,13 +115,22 @@ blocks:
   - {rev}/blocks/providers.py
   - {rev}/blocks/hunt.py
   - {bsc}/blocks/bsc.py
-prompts: {{ review: {bsc}/prompts/review.md, refute: {bsc}/prompts/refute.md }}
+  - {bsc}/blocks/conductor.py
+prompts:
+  review: {bsc}/prompts/review.md
+  refute: {bsc}/prompts/refute.md
+  explore: {bsc}/prompts/explorer.md
+  exploit: {bsc}/prompts/exploiter.md
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
+  explore_result:   {bsc}/schemas/explore_result.yaml
+  exploit_result:   {bsc}/schemas/exploit_result.yaml
 agents:
-  review: {{ backend: claude-cli, cli: {cli} }}
-  refute: {{ backend: claude-cli, cli: {cli} }}
+  review:  {{ backend: claude-cli, cli: {cli} }}
+  refute:  {{ backend: claude-cli, cli: {cli} }}
+  explore: {{ backend: claude-cli, cli: {cli} }}
+  exploit: {{ backend: claude-cli, cli: {cli} }}
 params:
   manual_path: {manual}
   manual_pinned_sha: {pinned}
@@ -137,6 +146,11 @@ params:
   forge_auth: {{ token_ref: NONE }}
   deny_patterns: []
   min_severity: low
+  hunt_max_explorers: 6
+  hunt_clang: "true"
+  probe_include: {probes}
+  hunt_regions: [clang/lib/Sema/BSC]
+  hunt_methods: [{{ id: invariant-probe, description: probe }}]
 """.format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
            rev=(PACKS / "packs" / "review"), cli=cli, manual=MANUAL, pinned=pinned))
     return pack

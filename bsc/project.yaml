@@ -40,15 +40,39 @@ params:
   # refresh: git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md
   manual_pinned_sha: 637bd165d0f4cfab13fbc021dc08ad2b199aad58
 
-  # a PR touching these but NOT the manual is flagged (must update first)
+  # The BSC surface: a PR touching ANY of these but NOT the manual is
+  # flagged (the manual is ground truth and must move with semantics).
   semantics_prefixes:
     - clang/lib/Sema/BSC
     - clang/lib/Analysis/BSC
+    - clang/lib/AST/BSC
+    - clang/lib/Parse/BSC
+    - libcbs
 
-  # touched path prefix -> code note file (under paths.code_notes)
+  # touched path prefix -> the MIXTURE of code notes for that area (the AI
+  # also invokes the bsc-* skills itself per the prompt). One area needs
+  # several notes: Sema spans ownership + overload + safe-zone + decl/expr/stmt.
   subsystem_map:
-    clang/lib/Sema/BSC: BSCOwnership.md
-    clang/lib/Analysis/BSC: BSCBorrowChecker.md
+    clang/lib/Sema/BSC:
+      - SemaBSCOwnership.md
+      - SemaBSCOverload.md
+      - SemaBSCSafeZone.md
+      - SemaDeclBSC.md
+      - SemaExpr_BSC.md
+      - SemaStmtBSC.md
+    clang/lib/Analysis/BSC:
+      - BSCBorrowChecker.md
+      - BSCIRInitAnalysis.md
+      - BSCNullabilityCheck.md
+      - BSCNullCheckInfo.md
+    clang/lib/AST/BSC:
+      - DeclBSC.md
+      - ExprBSC.md
+      - TypeBSC.md
+      - MangleBSC.md
+    clang/lib/Parse/BSC:
+      - ParseDeclBSC.md
+      - ParseStmtBSC.md
 
   # forge = gitcode, repo bisheng_c_language_dep/llvm-project (gitee-v5 API
   # shape). Confirm field names on the first dry-run poll.

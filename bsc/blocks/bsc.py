@@ -118,8 +118,13 @@ def _bsc_notes(env, task, spec):
         return {}
     wanted, out = set(), []
     for path in names.split():
-        for prefix, note in smap.items():
-            if path.startswith(prefix) and note not in wanted:
+        for prefix, notes in smap.items():
+            if not path.startswith(prefix):
+                continue
+            # a subsystem maps to a MIXTURE of notes (list), or one (string)
+            for note in (notes if isinstance(notes, list) else [notes]):
+                if note in wanted:
+                    continue
                 wanted.add(note)
                 p = Path(notes_dir) / note
                 if p.is_file():

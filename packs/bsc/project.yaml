@@ -38,7 +38,7 @@ params:
   manual_path: clang/docs/BSC/BiShengCLanguageUserManual.md
   # the manual blob the bsc-* skills were validated against (current HEAD).
   # refresh: git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md
-  manual_pinned_sha: 637bd165d0f4cfab13fbc021dc08ad2b199aad58
+  manual_pinned_sha: d02bf27591a1527afb9bc93e87d26427a80f9ba1
 
   # The BSC surface: a PR touching ANY of these but NOT the manual is
   # flagged (the manual is ground truth and must move with semantics).

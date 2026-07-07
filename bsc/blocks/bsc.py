@@ -102,32 +102,15 @@ def bsc_manual_gate(ctx, task, prev):
 
 @context_provider("bsc_notes")
 def _bsc_notes(env, task, spec):
-    """code_notes for the subsystems this branch touches (subsystem_map:
-    touched path prefix -> note file under paths.code_notes)."""
-    paths = env.pack.paths or {}
-    params = env.pack.params or {}
-    repo, notes_dir = paths.get("repo"), paths.get("code_notes")
-    smap = params.get("subsystem_map") or {}
-    payload = task.get("payload") or {}
-    base, branch = payload.get("base"), payload.get("branch")
-    if not (repo and notes_dir and base and branch):
+    """Point the agent at the compiler-internals notes so it reads what it
+    needs DYNAMICALLY — no static path->note map. Returns the notes dir and
+    its INDEX; the agent (agentic CLI) opens whichever notes are relevant to
+    the files in the diff, the same way it invokes bsc-* skills on demand."""
+    notes_dir = (env.pack.paths or {}).get("code_notes")
+    if not notes_dir:
         return {}
-    code, names = _git(env, repo, ["diff", "--name-only",
-                                   "%s...%s" % (base, branch)], "notes-diff")
-    if code != 0:
-        return {}
-    wanted, out = set(), []
-    for path in names.split():
-        for prefix, notes in smap.items():
-            if not path.startswith(prefix):
-                continue
-            # a subsystem maps to a MIXTURE of notes (list), or one (string)
-            for note in (notes if isinstance(notes, list) else [notes]):
-                if note in wanted:
-                    continue
-                wanted.add(note)
-                p = Path(notes_dir) / note
-                if p.is_file():
-                    out.append({"subsystem": prefix, "note": note,
-                                "text": p.read_text(errors="replace")[:_MAX_BYTES]})
-    return out
+    index = Path(notes_dir) / "INDEX.md"
+    return {"dir": str(notes_dir),
+            "index": index.read_text(errors="replace")[:8000] if index.is_file() else "",
+            "note": "BSC compiler-internals notes live in `dir` (see `index`). "
+                    "Open the ones relevant to the files you are reviewing."}

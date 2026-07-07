@@ -49,30 +49,10 @@ params:
     - clang/lib/Parse/BSC
     - libcbs
 
-  # touched path prefix -> the MIXTURE of code notes for that area (the AI
-  # also invokes the bsc-* skills itself per the prompt). One area needs
-  # several notes: Sema spans ownership + overload + safe-zone + decl/expr/stmt.
-  subsystem_map:
-    clang/lib/Sema/BSC:
-      - SemaBSCOwnership.md
-      - SemaBSCOverload.md
-      - SemaBSCSafeZone.md
-      - SemaDeclBSC.md
-      - SemaExpr_BSC.md
-      - SemaStmtBSC.md
-    clang/lib/Analysis/BSC:
-      - BSCBorrowChecker.md
-      - BSCIRInitAnalysis.md
-      - BSCNullabilityCheck.md
-      - BSCNullCheckInfo.md
-    clang/lib/AST/BSC:
-      - DeclBSC.md
-      - ExprBSC.md
-      - TypeBSC.md
-      - MangleBSC.md
-    clang/lib/Parse/BSC:
-      - ParseDeclBSC.md
-      - ParseStmtBSC.md
+  # No static path->skill/note map. The agent invokes the bsc-* skills
+  # dynamically (whatever the diff needs) and reads the compiler-internals
+  # notes it wants from paths.code_notes (its INDEX is injected). Dynamic,
+  # not pre-wired.
 
   # forge = gitcode, repo bisheng_c_language_dep/llvm-project (gitee-v5 API
   # shape). Confirm field names on the first dry-run poll.

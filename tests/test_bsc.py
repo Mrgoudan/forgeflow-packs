@@ -14,7 +14,7 @@ from forgeflow.contract import CONTEXT_PROVIDERS  # noqa: E402
 
 # register via the engine's idempotent loader (same path the pack uses), so
 # the provider/block aren't registered twice when an engine loads the pack
-load_files([str(PACKS / "bsc" / "blocks" / "bsc.py")])
+load_files([str(PACKS / "packs" / "bsc" / "blocks" / "bsc.py")])
 
 MANUAL = "clang/docs/BSC/BiShengCLanguageUserManual.md"
 SEMA = "clang/lib/Sema/BSC/SemaBSC.cpp"
@@ -129,7 +129,7 @@ params:
   forge_auth: {{ token_ref: NONE }}
   deny_patterns: []
   min_severity: low
-""".format(repo=repo, notes=notes, bsc=(PACKS / "bsc"), rev=(PACKS / "review"),
+""".format(repo=repo, notes=notes, bsc=(PACKS / "packs" / "bsc"), rev=(PACKS / "packs" / "review"),
            cli=cli, manual=MANUAL, pinned=pinned))
     return pack
 

@@ -5,58 +5,68 @@ The engine stays generic; everything domain- and machine-specific lives
 here as **packs** — a pack is one folder of YAML workflows + plugin blocks +
 prompts + schemas + config.
 
+## Three kinds of thing, kept separate
+
+- **packs** (`packs/`) — pack *definitions*: workflows, blocks, prompts,
+  schemas, and `project.yaml`. Version-controlled code.
+- **config** (`config/`) — machine-local secrets. `config/secrets.env`
+  (gitignored, `chmod 600`) holds your keys; `config/secrets.env.example`
+  is the template.
+- **runtime** (`run/`) — the shared state root: the SQLite db, worktrees,
+  and archived outputs. Gitignored; created on first run. NOT part of any
+  pack — every daemon uses this one root.
+
 ## Where your API keys go
 
-**One file, `chmod 600`:** `~/.config/forgeflow/secrets.env`
+**One file, `chmod 600`:** `config/secrets.env`
 
 ```bash
-cp secrets.env.example ~/.config/forgeflow/secrets.env
-$EDITOR ~/.config/forgeflow/secrets.env      # fill GLM key + forge token
-chmod 600 ~/.config/forgeflow/secrets.env    # the engine refuses looser perms
+cp config/secrets.env.example config/secrets.env
+$EDITOR config/secrets.env          # replace the two REPLACE_* lines
+chmod 600 config/secrets.env
 ```
 
-It holds three things (see `secrets.env.example` for the template):
+It holds:
 - `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` — GLM behind the claude CLI
-- `FORGE_TOKEN_MAIN` — the forge (gitee/gitcode) API token
+- `FORGE_TOKEN_MAIN` — the forge (gitcode) API token
 - `FORGE_WRITE=1` — uncomment only when ready to post to real PRs
 
-`bsc/run-bsc.sh` sources this file so both the GLM env vars and the forge
-token reach the daemon from that one place.
+`packs/packs/bsc/run-bsc.sh` sources this file so both the GLM env vars and the
+forge token reach the daemon from that one place.
 
 ## Folder structure
 
 ```
 forgeflow-packs/
 ├── README.md                 you are here
-├── secrets.env.example       → copy to ~/.config/forgeflow/secrets.env
+├── config/
+│   ├── secrets.env           your keys (gitignored, chmod 600)
+│   └── secrets.env.example    template
+├── run/                      shared runtime: db, worktrees, outputs (gitignored)
 │
-├── review/                   generic PR-review pack (forge-agnostic)
-│   ├── project.yaml.example  machine-local config template
-│   ├── RUNBOOK.md            operator guide (setup, run, observe, tune)
-│   ├── workflows/            intake · prfetch · review · report  (YAML)
-│   ├── blocks/               reviewblocks.py · forge.py · providers.py
-│   ├── prompts/              review.md · refute.md
-│   └── schemas/              review_findings · refute_decisions
+├── packs/
+│   ├── review/               generic PR-review pack (forge-agnostic library)
+│   │   ├── RUNBOOK.md         operator guide
+│   │   ├── workflows/         intake · prfetch · review · report
+│   │   ├── blocks/            reviewblocks.py · forge.py · providers.py
+│   │   ├── prompts/           review.md · refute.md
+│   │   └── schemas/           review_findings · refute_decisions
+│   └── bsc/                   BiSheng C review pack (extends review/)
+│       ├── project.yaml       REAL config (tracked): manual, GLM agents
+│       ├── README.md          BSC specifics (manual-wins, GLM, gate)
+│       ├── run-bsc.sh         launcher: sources secrets, runs the daemon
+│       ├── workflows/         bsc_review + the forge workflows
+│       ├── blocks/bsc.py      bsc_manual / bsc_notes providers + manual gate
+│       └── prompts/           BSC review + refute prompts
 │
-├── bsc/                      BiSheng C review pack (extends review/)
-│   ├── project.yaml.example  BSC config (in-repo manual, GLM agents)
-│   ├── README.md             BSC specifics (manual-wins, GLM, gate)
-│   ├── run-bsc.sh            launcher: sources secrets, runs the daemon
-│   ├── workflows/            bsc_review + the forge workflows
-│   ├── blocks/bsc.py         bsc_manual / bsc_notes providers + manual gate
-│   └── prompts/              BSC review + refute prompts
-│
-├── bin/
-│   └── embed_server.py       local embedding sidecar (sentence-transformers)
-│
+├── bin/embed_server.py       local embedding sidecar (sentence-transformers)
 ├── systemd/                  user-unit templates (daemon + sidecar)
 ├── docs/                     design docs (DESIGN · HUNT · INVOCATION · DATAMODEL)
 └── tests/                    unittest suite (fake agent + fake forge; no model cost)
-    ├── helpers.py
-    ├── fixtures/fake_agent.py
-    ├── test_review.py
-    └── test_bsc.py
 ```
+
+**Which pack do I run?** `packs/bsc`. `packs/review` is the generic library
+`bsc` reuses its blocks from — you don't run it directly.
 
 ## The packs
 
@@ -89,6 +99,6 @@ mode, manual-wins, the must-update gate, AI-mandatory parking) run offline.
 
 ```bash
 $EDITOR ~/.config/forgeflow/secrets.env         # replace the two REPLACE_* lines
-./bsc/run-bsc.sh validate                        # prove it loads
-./bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
+./packs/bsc/run-bsc.sh validate                        # prove it loads
+./packs/bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
 ```

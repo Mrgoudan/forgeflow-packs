@@ -55,7 +55,7 @@ params:
   forge_auth: {{ token_ref: T, style: query, name: access_token }}
   deny_patterns: []
   min_severity: {sev}
-""".format(repo=repo, src=(PACKS / "review"), cli=cli, forge=forge_url, sev=min_sev))
+""".format(repo=repo, src=(PACKS / "packs" / "review"), cli=cli, forge=forge_url, sev=min_sev))
     return pack
 
 

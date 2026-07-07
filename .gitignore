@@ -5,3 +5,9 @@
 # python
 __pycache__/
 *.pyc
+
+# real secrets — NEVER commit
+secrets.env
+
+# runtime state (db, worktrees, archived outputs) — machine-local
+*/.run/

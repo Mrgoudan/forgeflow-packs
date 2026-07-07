@@ -13,7 +13,7 @@ set -euo pipefail
 PACK_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENGINE="${ENGINE:-$HOME/bsd/forgeflow}"
 SECRETS="${FORGEFLOW_SECRETS:-$HOME/.config/forgeflow/secrets.env}"
-FF_ROOT="${FF_ROOT:-$HOME/ff-bsc}"
+FF_ROOT="${FF_ROOT:-$PACK_DIR/.run}"
 
 if [ ! -f "$SECRETS" ]; then
   echo "missing $SECRETS — copy $PACK_DIR/secrets.env.example there and chmod 600" >&2

@@ -116,20 +116,23 @@ def review_adjudicate(ctx, task, prev):
                                         "not defended by refutation pass",
                                         "run_id": run_id}})
 
-    # machine findings (pattern rules AND probe-sweep results): deterministic
-    # evidence, not claims -> triaged directly, never refuted.
-    for prefix in ("pattern-", "sweep-"):
-        for r in conn.execute(
-                "SELECT id, key, title, severity, state FROM findings"
-                " WHERE source='review' AND key LIKE ? || ? || '-%'"
-                " ORDER BY id", (prefix, branch)):
-            if r["state"] != "found":
-                continue
-            staged.append({"op": "transition", "finding_id": r["id"],
-                           "to_state": "triaged", "event": "review:machine_rule",
-                           "evidence": {"kind": prefix.rstrip("-")}})
-            confirmed.append({"key": r["key"], "title": r["title"],
-                              "severity": r["severity"], "confidence": "machine"})
+    # machine findings that are REAL problems -> triaged (the manual gate, a
+    # red build, a compiler crash/hang). A probe behavior CHANGE (probe-flip)
+    # is EVIDENCE for the AI, not a defect — it stays 'found' and is never
+    # posted.
+    for r in conn.execute(
+            "SELECT id, key, title, severity, state, pattern FROM findings"
+            " WHERE source='review' AND state='found'"
+            " AND (key LIKE 'pattern-' || ? || '-%' OR key LIKE 'sweep-' || ? || '-%'"
+            "      OR key LIKE 'build-' || ? || '%') ORDER BY id",
+            (branch, branch, branch)):
+        if r["pattern"] == "probe-flip":
+            continue                       # behavior change = evidence, not a defect
+        staged.append({"op": "transition", "finding_id": r["id"],
+                       "to_state": "triaged", "event": "review:machine_rule",
+                       "evidence": {"kind": r["pattern"]}})
+        confirmed.append({"key": r["key"], "title": r["title"],
+                          "severity": r["severity"], "confidence": "machine"})
 
     confirmed.sort(key=lambda f: -_SEV_RANK.get(f.get("severity"), 0))
     return "ok", {"_staged": staged, "findings": confirmed,

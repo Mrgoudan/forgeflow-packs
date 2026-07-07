@@ -122,7 +122,7 @@ class ReviewPipelineTest(unittest.TestCase):
                       eng.subscriptions)
         eng.run_until_idle()
         self.assertEqual(len(self.forge.comments), 1)         # posted, not skipped
-        self.assertIn("No defects found", self.forge.comments[0]["body"])
+        self.assertIn("no defects found", self.forge.comments[0]["body"])
         n = eng.conn.execute("SELECT count(*) c FROM findings").fetchone()["c"]
         self.assertEqual(n, 0)
 

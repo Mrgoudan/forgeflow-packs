@@ -14,7 +14,6 @@ steps:
       auth: "{pack.forge_auth}"
       deny_patterns: "{pack.deny_patterns}"
       min_severity: "{pack.min_severity}"
-      body_header: "Automated review of PR #{payload.request.pr} at {payload.request.head_sha}: {payload.confirmed} finding(s)."
     outcomes:
       sent: done
       archived: done

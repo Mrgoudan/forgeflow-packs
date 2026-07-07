@@ -107,7 +107,7 @@ def forge_fetch_pr_head(ctx, task, prev):
 @block("publish.comment", "egress",
        {"sent", "archived", "duplicate", "skipped", "leak_blocked",
         "forge_auth", "forge_server", "timeout"},
-       required_params={"comment_url", "body_header"})
+       required_params={"comment_url"})
 def publish_comment(ctx, task, prev):
     """Egress choke point, per the engine contract: leak scan -> egress row
     + archived body (transaction) -> forge call -> record forge-side id.
@@ -121,14 +121,17 @@ def publish_comment(ctx, task, prev):
     rank = {"low": 1, "medium": 2, "high": 3}
     floor = rank.get(ctx.get("min_severity", "low"), 0)
     posted = [f for f in findings if rank.get(f.get("severity"), 1) >= floor]
-    # ALWAYS post a result. Findings -> list them; nothing -> say so.
-    body = _tpl(ctx["body_header"], ctx, task, prev) + "\n\n"
+    # Plain, useful wording — no internal jargon.
+    lines = ["🤖 Automated BSC review — PR #%s" % request["pr"], ""]
     if posted:
+        lines.append("**Verdict: %d issue(s) found.**" % len(posted))
+        lines.append("")
         for f in posted:
-            body += "- [%s] %s\n" % (f.get("severity", "?"),
-                                     f.get("title", "untitled"))
+            lines.append("- **[%s]** %s" % (f.get("severity", "?"),
+                                            f.get("title", "").strip()))
     else:
-        body += "No defects found."
+        lines.append("**Verdict: no defects found.**")
+    body = "\n".join(lines)
     for pattern in ctx.get("deny_patterns", ()):
         if re.search(pattern, body):
             return "leak_blocked", {"pattern": pattern}

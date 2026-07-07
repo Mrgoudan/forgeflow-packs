@@ -11,3 +11,6 @@ run/
 # python
 __pycache__/
 *.pyc
+
+# method-asset vault (own git repo, nested) — not tracked by the pack repo
+/vault/

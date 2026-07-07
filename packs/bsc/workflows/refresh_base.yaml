@@ -1,0 +1,27 @@
+# Base maintenance: pull the base branch, rebuild base clang, and record the
+# probe baseline (base outputs keyed by base rev). Run this on an interval or
+# whenever the base branch advances; reviews then diff their PR clang against
+# this cached base — no per-review base build.
+workflow: refresh_base
+consumes: [base.refresh_requested]
+emits: []
+
+steps:
+  - name: rebuild                    # checkout base, git pull, ninja clang
+    block: shell.run
+    timeout_s: 7200
+    params:
+      cmd: "{pack.refresh_cmd}"
+    outcomes: { ok: record, nonzero: failed, mismatch: failed, timeout: failed }
+
+  - name: record                     # snapshot base clang's probe outputs
+    block: hunt.probe_sweep
+    timeout_s: 900
+    params:
+      mode: record
+      probes_dir: "{pack.probes_dir}"
+      cmd: "{pack.probe_cmd}"
+      max_workers: "{pack.probe_workers}"
+      baseline_root: "{pack.baseline_root}"
+      repo: "{paths.repo}"
+    outcomes: { clean: done, findings: done, error: failed, timeout: failed }

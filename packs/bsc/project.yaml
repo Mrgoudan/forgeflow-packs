@@ -65,6 +65,12 @@ params:
   # tree; the build leaving it at the PR is fine there.
   build_cmd: ["/home/ziruichen/bsd/forgeflow-packs/packs/bsc/scripts/build_clang.sh",
               "{paths.repo}", "{paths.repo}/build", "{payload.head_sha}"]
+  # base maintenance: refresh_base pulls the base branch, rebuilds base clang,
+  # and records the probe baseline under baseline_root/<base_rev>. Reviews
+  # diff their PR clang against that cache — run refresh_base when base moves.
+  refresh_cmd: ["/home/ziruichen/bsd/forgeflow-packs/packs/bsc/scripts/refresh_base.sh",
+                "{paths.repo}", "{paths.repo}/build", "{payload.base}"]
+  baseline_root: /home/ziruichen/bsd/forgeflow-packs/run/probe_baselines
   probes_dir: /home/ziruichen/bsd/forgeflow-packs/vault/bsc/probes
   probe_cmd: ["{paths.repo}/build/bin/clang", "-fsyntax-only",
               "-Wno-nullability-completeness",

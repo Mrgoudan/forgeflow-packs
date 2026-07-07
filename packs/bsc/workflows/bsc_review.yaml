@@ -27,35 +27,25 @@ steps:
       repo: "{paths.repo}"
       manual_path: "{pack.manual_path}"
       semantics_prefixes: "{pack.semantics_prefixes}"
-    outcomes: { ok: sweep_base, flagged: sweep_base, error: failed, timeout: failed }
+    outcomes: { ok: build, flagged: build, error: failed, timeout: failed }
 
-  - name: sweep_base                 # record probe outputs against BASE clang
-    block: hunt.probe_sweep          # (before the PR build), for head-vs-base
-    timeout_s: 900
-    params:
-      mode: record
-      probes_dir: "{pack.probes_dir}"
-      cmd: "{pack.probe_cmd}"
-      max_workers: "{pack.probe_workers}"
-      repo: "{paths.repo}"
-    outcomes: { clean: build, findings: build, error: build, timeout: build }
-
-  - name: build                      # evidence gate: put the pack's clang at
-    block: evidence.build            # the PR state (incremental).
+  - name: build                      # evidence gate: build PR clang (per
+    block: evidence.build            # review, incremental).
     timeout_s: 3600
     params:
       cmd: "{pack.build_cmd}"
       repo: "{paths.repo}"
     outcomes: { green: sweep, red: lens, error: sweep, timeout: sweep }
 
-  - name: sweep                      # run the SAME probes against PR clang and
-    block: hunt.probe_sweep          # FLAG the ones whose output changed vs base
-    timeout_s: 1800                  # — a true head-vs-base behavior diff.
+  - name: sweep                      # diff PR clang vs the CACHED base baseline
+    block: hunt.probe_sweep          # (recorded by refresh_base, keyed by base
+    timeout_s: 1800                  # rev) — head-vs-base, no per-review base build.
     params:
       mode: diff
       probes_dir: "{pack.probes_dir}"
       cmd: "{pack.probe_cmd}"
       max_workers: "{pack.probe_workers}"
+      baseline_root: "{pack.baseline_root}"
       repo: "{paths.repo}"
     outcomes: { clean: lens, findings: lens, error: lens, timeout: lens }
 

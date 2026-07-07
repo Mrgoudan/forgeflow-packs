@@ -50,10 +50,21 @@ def hunt_probe_sweep(ctx, task, prev):
     ptimeout = int(ctx.get("probe_timeout_s", 60))
     step_dir = Path(ctx["_step_dir"])
     tools = ctx.get("_tools")
-    # base outputs shared between the record and diff steps of the same task
-    baseline = Path(ctx.get("baseline_dir")
-                    or (Path(ctx.get("_data_dir", str(step_dir))) / "tasks"
-                        / str(task["id"]) / "probe_baseline"))
+    # baseline location: an explicit dir, or baseline_root keyed by the base
+    # rev (so a recorded base is reused across reviews until base advances),
+    # or a per-task default.
+    if ctx.get("baseline_root"):
+        repo0 = _tpl(ctx.get("repo", ""), task, prev)
+        base_ref = (task.get("payload") or {}).get("base", "HEAD")
+        code, out, _ = run_cmd(["git", "-C", str(repo0), "rev-parse", base_ref],
+                               30, step_dir / "baserev", tools=tools)
+        base_rev = Path(out).read_text().strip() if code == 0 else "unknown"
+        baseline = Path(_tpl(ctx["baseline_root"], task, prev)) / base_rev
+    elif ctx.get("baseline_dir"):
+        baseline = Path(ctx["baseline_dir"])
+    else:
+        baseline = (Path(ctx.get("_data_dir", str(step_dir))) / "tasks"
+                    / str(task["id"]) / "probe_baseline")
     baseline.mkdir(parents=True, exist_ok=True)
     carry = {"path": (prev or {}).get("path"),
              "diff_file": (prev or {}).get("diff_file")}
@@ -61,6 +72,9 @@ def hunt_probe_sweep(ctx, task, prev):
     probes = sorted(glob.glob(str(Path(probes_dir) / "*.cbs")))
     if not probes:
         return "error", dict(carry, reason="no probes in %s" % probes_dir)
+    if mode == "diff" and not any(baseline.glob("*.out")):
+        return "error", dict(carry, reason="no base baseline at %s — run "
+                             "refresh_base first" % baseline)
 
     def run_one(probe):
         pid = Path(probe).stem

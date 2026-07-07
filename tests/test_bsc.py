@@ -127,6 +127,8 @@ params:
   manual_pinned_sha: {pinned}
   semantics_prefixes: [clang/lib/Sema/BSC]
   build_cmd: ["true"]
+  refresh_cmd: ["true"]
+  baseline_root: {probes}/baselines
   probes_dir: {probes}
   probe_cmd: ["true", "{{probe}}"]
   probe_workers: 2
@@ -166,9 +168,8 @@ class BscAiMandatoryTest(unittest.TestCase):
         # AI-only pipeline: no prescan / no machine code-review step
         steps = [r["step"] for r in eng.conn.execute(
             "SELECT step FROM task_steps WHERE task_id=1 ORDER BY rowid")]
-        self.assertEqual(steps, ["workspace", "diff", "gate", "sweep_base",
-                                 "build", "sweep", "lens", "file", "refute",
-                                 "adjudicate", "announce"])
+        self.assertEqual(steps, ["workspace", "diff", "gate", "build", "sweep",
+                                 "lens", "file", "refute", "adjudicate", "announce"])
         f = {r["key"]: r["state"] for r in eng.conn.execute(
             "SELECT key, state FROM findings")}
         # every finding came from the AI (review-*), vetted by refutation

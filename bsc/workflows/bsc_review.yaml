@@ -47,11 +47,13 @@ steps:
       - lessons: { task_kind: review }
     outcomes:
       FINDINGS: file
-      CLEAN: adjudicate
+      CLEAN: adjudicate               # AI ran and found nothing = a valid review
+      # BSC MUST be AI-reviewed: any AI breakdown parks -> the daemon's
+      # unpark tick re-queues it for another run. No machine-only degrade.
       agent_limit: parked
       agent_backend: parked
-      agent_invalid: adjudicate
-      timeout: adjudicate
+      agent_invalid: parked
+      timeout: parked
 
   - name: file
     block: review.file_findings
@@ -71,10 +73,12 @@ steps:
     outcomes:
       DECIDED: adjudicate
       NONE: adjudicate
+      # confirmation is part of the AI review — a breakdown re-queues, never
+      # posts unvetted findings.
       agent_limit: parked
       agent_backend: parked
-      agent_invalid: adjudicate
-      timeout: adjudicate
+      agent_invalid: parked
+      timeout: parked
 
   - name: adjudicate
     block: review.adjudicate

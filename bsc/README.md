@@ -32,19 +32,20 @@ covered by `tests/test_bsc.py`.
 
 ## Setup
 
+`bsc/project.yaml` is already real (this machine's paths + the gitcode
+repo). The only thing missing is your two secret values:
+
 ```bash
-# 1. secrets — copy the env file, fill your GLM key + forge token, lock it
-cp bsc/secrets.env.example ~/.config/forgeflow/secrets.env
-$EDITOR ~/.config/forgeflow/secrets.env
-chmod 600 ~/.config/forgeflow/secrets.env
+# put your GLM key + gitcode token into the real (already-created) file
+$EDITOR ~/.config/forgeflow/secrets.env      # replace the two REPLACE_* lines
 
-# 2. pack config — fill paths.repo (the reviewed repo) + forge params
-cp bsc/project.yaml.example bsc/project.yaml
-
-# 3. run via the wrapper (sources secrets so GLM env + forge token both flow)
+# run via the wrapper (sources secrets so GLM env + forge token both flow)
 ./bsc/run-bsc.sh validate
 ./bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
 ```
+
+Adjust `bsc/project.yaml` if your reviewed repo lives elsewhere or the
+gitcode API path differs.
 
 Everything else (pipeline, egress, degraded mode, tuning) is the review
 pack's [RUNBOOK](../review/RUNBOOK.md).

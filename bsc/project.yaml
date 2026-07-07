@@ -1,0 +1,60 @@
+# BSC reviewer — real config for this machine. (Tracked: this repo is a
+# personal deployment. Secrets are NOT here — they live in
+# ~/.config/forgeflow/secrets.env, 0600.)
+name: bsc
+
+paths:
+  repo:       /home/ziruichen/bsd/llvm-project-dup            # reviewed repo; PR heads fetched here
+  code_notes: /home/ziruichen/bsd/forgeflow-vault/bsc/code_notes
+
+tools:
+  git: { path: git, version_cmd: ["--version"] }
+
+workflows: [workflows]
+blocks:
+  - ../review/blocks/reviewblocks.py
+  - ../review/blocks/forge.py
+  - ../review/blocks/providers.py
+  - blocks/bsc.py
+
+prompts:
+  review: prompts/review.md
+  refute: prompts/refute.md
+schemas:
+  review_findings:  ../review/schemas/review_findings.yaml
+  refute_decisions: ../review/schemas/refute_decisions.yaml
+
+agents:
+  # GLM behind the agentic claude CLI (so bsc-* skills + worktree work).
+  # ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN come from the sourced secrets
+  # file (run-bsc.sh) and are forwarded into the agent by env_keys.
+  review: { backend: claude-cli, model: glm-4.6,
+            env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  refute: { backend: claude-cli, model: glm-4.6,
+            env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+
+params:
+  # user manual = ground truth, inside the reviewed repo
+  manual_path: clang/docs/BSC/BiShengCLanguageUserManual.md
+  # the manual blob the bsc-* skills were validated against (current HEAD).
+  # refresh: git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md
+  manual_pinned_sha: 637bd165d0f4cfab13fbc021dc08ad2b199aad58
+
+  # a PR touching these but NOT the manual is flagged (must update first)
+  semantics_prefixes:
+    - clang/lib/Sema/BSC
+    - clang/lib/Analysis/BSC
+
+  # touched path prefix -> code note file (under paths.code_notes)
+  subsystem_map:
+    clang/lib/Sema/BSC: BSCOwnership.md
+    clang/lib/Analysis/BSC: BSCBorrowChecker.md
+
+  # forge = gitcode, repo bisheng_c_language_dep/llvm-project (gitee-v5 API
+  # shape). Confirm field names on the first dry-run poll.
+  prs_url:     "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls?state=open"
+  comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls/{payload.request.pr}/comments"
+  forge_auth:  { token_ref: MAIN, style: query, name: access_token }
+  deny_patterns:
+    - "BEGIN [A-Z]+ PRIVATE KEY"
+  min_severity: medium

@@ -85,10 +85,10 @@ mode, manual-wins, the must-update gate, AI-mandatory parking) run offline.
 
 ## Quick start (BSC reviewer)
 
+`bsc/project.yaml` is real (not a template). Just add your two secrets:
+
 ```bash
-cp bsc/project.yaml.example bsc/project.yaml    # fill paths.repo + forge URLs
-cp secrets.env.example ~/.config/forgeflow/secrets.env && chmod 600 $_
-$EDITOR ~/.config/forgeflow/secrets.env         # your GLM key + forge token
-./bsc/run-bsc.sh validate                       # prove it loads
+$EDITOR ~/.config/forgeflow/secrets.env         # replace the two REPLACE_* lines
+./bsc/run-bsc.sh validate                        # prove it loads
 ./bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
 ```

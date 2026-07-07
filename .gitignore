@@ -1,8 +1,6 @@
-# machine-local pack configs (examples are the documentation)
+# machine-local pack configs (the real bsc/project.yaml IS tracked)
 */project.yaml
-
-# demo scratch (any demo-*-run dir)
-# (no scratch dirs; tests use tempfile)
+!bsc/project.yaml
 
 # python
 __pycache__/

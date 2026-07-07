@@ -27,7 +27,17 @@ steps:
       repo: "{paths.repo}"
       manual_path: "{pack.manual_path}"
       semantics_prefixes: "{pack.semantics_prefixes}"
-    outcomes: { ok: lens, flagged: lens, error: failed, timeout: failed }
+    outcomes: { ok: sweep, flagged: sweep, error: failed, timeout: failed }
+
+  - name: sweep                      # deterministic probe hunt (parallel):
+    block: hunt.probe_sweep          # run the probe bench against clang,
+    timeout_s: 1800                  # capped fan-out, oracle = expected.stderr
+    params:
+      probes_dir: "{pack.probes_dir}"
+      cmd: "{pack.probe_cmd}"
+      max_workers: "{pack.probe_workers}"
+      repo: "{paths.repo}"
+    outcomes: { clean: lens, findings: lens, error: lens, timeout: lens }
 
   - name: lens                       # AI review — the ONLY thing that finds
     block: agent.run                 # code defects. No machine-only fallback.

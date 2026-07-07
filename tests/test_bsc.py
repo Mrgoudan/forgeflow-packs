@@ -100,6 +100,8 @@ class BscGroundTruthTest(unittest.TestCase):
 def write_pack(base, repo, pinned, cli):
     notes = base / "notes"
     notes.mkdir()
+    probes = base / "probes"
+    probes.mkdir()          # empty -> sweep returns 'error' -> routes to lens
     pack = base / "pack"
     pack.mkdir()
     (pack / "project.yaml").write_text("""\
@@ -111,6 +113,7 @@ blocks:
   - {rev}/blocks/reviewblocks.py
   - {rev}/blocks/forge.py
   - {rev}/blocks/providers.py
+  - {rev}/blocks/hunt.py
   - {bsc}/blocks/bsc.py
 prompts: {{ review: {bsc}/prompts/review.md, refute: {bsc}/prompts/refute.md }}
 schemas:
@@ -123,14 +126,16 @@ params:
   manual_path: {manual}
   manual_pinned_sha: {pinned}
   semantics_prefixes: [clang/lib/Sema/BSC]
-  subsystem_map: {{}}
+  probes_dir: {probes}
+  probe_cmd: ["true", "{{probe}}"]
+  probe_workers: 2
   prs_url: "http://unused/pulls"
   comment_url: "http://unused/pulls/{{payload.request.pr}}/comments"
   forge_auth: {{ token_ref: NONE }}
   deny_patterns: []
   min_severity: low
-""".format(repo=repo, notes=notes, bsc=(PACKS / "packs" / "bsc"), rev=(PACKS / "packs" / "review"),
-           cli=cli, manual=MANUAL, pinned=pinned))
+""".format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
+           rev=(PACKS / "packs" / "review"), cli=cli, manual=MANUAL, pinned=pinned))
     return pack
 
 
@@ -160,7 +165,7 @@ class BscAiMandatoryTest(unittest.TestCase):
         # AI-only pipeline: no prescan / no machine code-review step
         steps = [r["step"] for r in eng.conn.execute(
             "SELECT step FROM task_steps WHERE task_id=1 ORDER BY rowid")]
-        self.assertEqual(steps, ["workspace", "diff", "gate", "lens",
+        self.assertEqual(steps, ["workspace", "diff", "gate", "sweep", "lens",
                                  "file", "refute", "adjudicate", "announce"])
         f = {r["key"]: r["state"] for r in eng.conn.execute(
             "SELECT key, state FROM findings")}

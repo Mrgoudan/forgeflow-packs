@@ -15,6 +15,7 @@ blocks:
   - ../review/blocks/reviewblocks.py
   - ../review/blocks/forge.py
   - ../review/blocks/providers.py
+  - ../review/blocks/hunt.py
   - blocks/bsc.py
 
 prompts:
@@ -53,6 +54,16 @@ params:
   # dynamically (whatever the diff needs) and reads the compiler-internals
   # notes it wants from paths.code_notes (its INDEX is injected). Dynamic,
   # not pre-wired.
+
+  # Probe sweep (deterministic parallel hunt). Runs the probe bench against
+  # `clang` and compares each probe's stderr to its .expected.stderr oracle.
+  # NOTE: point probe_cmd at a clang BUILT WITH THE PR to hunt the PR's
+  # behavior; against a base clang it only regression-checks the bench.
+  probes_dir: /home/ziruichen/bsd/forgeflow-vault/bsc/probes
+  probe_cmd: ["{paths.repo}/build/bin/clang", "-fsyntax-only",
+              "-Wno-nullability-completeness",
+              "-I", "{paths.repo}/libcbs/src/bishengc_safety", "{probe}"]
+  probe_workers: 6
 
   # forge = gitcode, repo bisheng_c_language_dep/llvm-project (gitee-v5 API
   # shape). Confirm field names on the first dry-run poll.

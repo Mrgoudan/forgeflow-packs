@@ -116,18 +116,20 @@ def review_adjudicate(ctx, task, prev):
                                         "not defended by refutation pass",
                                         "run_id": run_id}})
 
-    # machine findings: evidence, not claims -> triaged directly
-    for r in conn.execute(
-            "SELECT id, key, title, severity, state FROM findings"
-            " WHERE source='review' AND key LIKE 'pattern-' || ? || '-%'"
-            " ORDER BY id", (branch,)):
-        if r["state"] != "found":
-            continue
-        staged.append({"op": "transition", "finding_id": r["id"],
-                       "to_state": "triaged", "event": "review:machine_rule",
-                       "evidence": {"kind": "pattern_scan"}})
-        confirmed.append({"key": r["key"], "title": r["title"],
-                          "severity": r["severity"], "confidence": "machine"})
+    # machine findings (pattern rules AND probe-sweep results): deterministic
+    # evidence, not claims -> triaged directly, never refuted.
+    for prefix in ("pattern-", "sweep-"):
+        for r in conn.execute(
+                "SELECT id, key, title, severity, state FROM findings"
+                " WHERE source='review' AND key LIKE ? || ? || '-%'"
+                " ORDER BY id", (prefix, branch)):
+            if r["state"] != "found":
+                continue
+            staged.append({"op": "transition", "finding_id": r["id"],
+                           "to_state": "triaged", "event": "review:machine_rule",
+                           "evidence": {"kind": prefix.rstrip("-")}})
+            confirmed.append({"key": r["key"], "title": r["title"],
+                              "severity": r["severity"], "confidence": "machine"})
 
     confirmed.sort(key=lambda f: -_SEV_RANK.get(f.get("severity"), 0))
     return "ok", {"_staged": staged, "findings": confirmed,

@@ -9,6 +9,7 @@
 #   ./run-bsc.sh emit forge.poll_requested --data '{}' --drive
 #   ./run-bsc.sh run
 #   ./run-bsc.sh dash [--port 8787]   # control room: stats + queue + block maps
+#   ./run-bsc.sh port                 # one-time vault -> db knowledge port
 set -euo pipefail
 
 PACK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -42,6 +43,10 @@ fi
 if [ "${1:-}" = "dash" ]; then
   shift
   exec python3 "$PACK_DIR/dashboard.py" --root "$FF_ROOT" --pack "$PACK_DIR" "$@"
+fi
+if [ "${1:-}" = "port" ]; then
+  shift
+  exec python3 "$PACK_DIR/port.py" --root "$FF_ROOT" --pack "$PACK_DIR" "$@"
 fi
 
 exec python3 -m forgeflow --root "$FF_ROOT" --pack "$PACK_DIR" "$@"

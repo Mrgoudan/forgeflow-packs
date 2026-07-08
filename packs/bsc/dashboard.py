@@ -441,12 +441,23 @@ border-radius:6px;padding:3px 6px;width:130px}
 .down{height:24px;display:flex;align-items:center;justify-content:center;position:relative}
 .down::before{content:'';position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
 .down span{background:var(--card);padding:0 6px;position:relative;z-index:1;color:var(--dim);font-size:10px}
-.branches{display:flex;gap:16px;align-items:flex-start;padding-top:2px}
-.branch{display:flex;flex-direction:column;align-items:center}
+.fork{width:1px;height:11px;background:var(--line);margin:0 auto}
+.branches{display:flex;gap:16px;align-items:flex-start;padding-top:12px;position:relative}
+.branches::before{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:var(--line)}
+.branch{display:flex;flex-direction:column;align-items:center;position:relative}
+.branch::before{content:'';position:absolute;top:-12px;left:50%;width:1px;height:12px;background:var(--line)}
 .branch>.edge{color:var(--accent);font-size:10px;margin:2px 0 5px;white-space:nowrap}
 .termpills{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:5px 0 2px;max-width:190px}
 .pillt{font-size:10px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
 .pillt.ref{border-style:dashed;cursor:pointer;color:var(--accent)}
+.capsec{margin-bottom:22px}.caph{font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+color:var(--accent);margin:4px 0;border-bottom:1px solid var(--line);padding-bottom:5px}
+.evband{display:flex;flex-direction:column;align-items:center;color:var(--dim);font-size:12px;margin:0}
+.evband .ev{background:#0d2a4d;border:1px solid #1f6feb;border-radius:12px;padding:1px 10px;color:#79c0ff;white-space:nowrap}
+.evband .bar{width:1px;height:14px;background:#1f6feb}
+.evband.loop .ev{background:#3d2c00;border-color:var(--warn);color:var(--warn)}
+.emits{color:var(--dim);font-size:11px;margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+.emits b{color:#79c0ff}
 .block{background:#0d1117;border:1px solid var(--line);border-radius:7px;padding:8px 10px;
 cursor:pointer;transition:transform .08s;position:relative;overflow:hidden}
 .block:hover{transform:translateY(-2px);border-color:var(--accent)}
@@ -571,21 +582,58 @@ function renderTree(g,name,by,seen,max){
   if(fwd.length===1){const [t,outs]=fwd[0];
     cont=`<div class=down><span>${outs.join('/')} ↓</span></div>`+renderTree(g,t,by,seen,max);
   }else if(fwd.length>1){
-    cont=`<div class=branches>${fwd.map(([t,outs])=>
+    cont=`<div class=fork></div><div class=branches>${fwd.map(([t,outs])=>
       `<div class=branch><span class=edge>${outs.join('/')} ↓</span>${renderTree(g,t,by,seen,max)}</div>`).join('')}</div>`;
   }
   return `<div class=treecol>${stepCard(g,st,max)}${pillHtml}${cont}</div>`;
 }
+// order the workflows of one capability by event flow (A before B if A emits
+// an event B consumes); leftovers (cycles) appended.
+function orderByFlow(list){
+  const byName={},adj={},indeg={};
+  list.forEach(g=>{byName[g.name]=g;adj[g.name]=[];indeg[g.name]=0;});
+  list.forEach(a=>a.emits.forEach(e=>list.forEach(b=>{
+    if(b.name!==a.name && b.consumes.includes(e)){adj[a.name].push(b.name);indeg[b.name]++;}})));
+  const q=list.filter(g=>indeg[g.name]===0).map(g=>g.name),out=[],seen=new Set();
+  while(q.length){const n=q.shift();if(seen.has(n))continue;seen.add(n);out.push(byName[n]);
+    adj[n].forEach(m=>{if(--indeg[m]<=0&&!seen.has(m))q.push(m);});}
+  list.forEach(g=>{if(!seen.has(g.name))out.push(g);});
+  return out;
+}
+const CAP_ORDER=[['review','Review pipeline'],['hunt','Bug-hunt campaign'],
+                 ['fix','Fix loop'],['other','Other']];
 function renderWorkflows(gs){
-  workflows.innerHTML=gs.map(g=>{
-    const max=Math.max(1,...g.steps.map(s=>s.ran));
-    const by={};g.steps.forEach(s=>by[s.name]=s);
-    const root=g.steps.length?g.steps[0].name:null;
-    return `<div class=wf>
-      <h3>${g.name} <span class=tag>${g.cap||''}</span></h3>
-      <div class=sub>consumes ${g.consumes.join(', ')||'—'} · emits ${g.emits.join(', ')||'—'}</div>
-      <div class=tree>${root?renderTree(g,root,by,new Set(),max):''}</div></div>`;
-  }).join('');
+  // event wiring across ALL workflows (so cross-capability links show too)
+  const emitMap={},consMap={};
+  gs.forEach(g=>{g.emits.forEach(e=>(emitMap[e]=emitMap[e]||[]).push(g.name));
+                 g.consumes.forEach(e=>(consMap[e]=consMap[e]||[]).push(g.name));});
+  const byCap={};gs.forEach(g=>{const c=g.cap||'other';(byCap[c]=byCap[c]||[]).push(g);});
+  let html='';
+  for(const [cap,label] of CAP_ORDER){
+    const list=byCap[cap];if(!list||!list.length)continue;
+    const ordered=orderByFlow(list),pos={};ordered.forEach((g,i)=>pos[g.name]=i);
+    html+=`<div class=capsec><div class=caph>${label}</div>`;
+    ordered.forEach((g,i)=>{
+      // event(s) that trigger this workflow, + where they come from
+      html+=g.consumes.map(ev=>{
+        const src=(emitMap[ev]||[]).filter(w=>w!==g.name);
+        const loop=src.some(w=>pos[w]!=null && pos[w]>=i);      // back-edge = loop
+        const from=src.length?('◀ '+src.join(', ')):(i===0?'trigger':'ext');
+        return `<div class="evband ${loop?'loop':''}">${i>0||src.length?'<div class=bar></div>':''}
+          <span class=ev>${ev} <span class=tag>${from}${loop?' ↺':''}</span></span><div class=bar></div></div>`;
+      }).join('');
+      const max=Math.max(1,...g.steps.map(s=>s.ran));
+      const by={};g.steps.forEach(s=>by[s.name]=s);
+      const root=g.steps.length?g.steps[0].name:null;
+      const outs=g.emits.map(e=>{const c=(consMap[e]||[]).filter(w=>w!==g.name);
+        return `<b>${e}</b>${c.length?' ▶ '+c.join(', '):''}`;});
+      html+=`<div class=wf><h3>${g.name}</h3>
+        <div class=tree>${root?renderTree(g,root,by,new Set(),max):''}</div>
+        ${outs.length?`<div class=emits>emits ${outs.join(' · ')}</div>`:''}</div>`;
+    });
+    html+='</div>';
+  }
+  workflows.innerHTML=html;
 }
 function closeDrawer(){drawer.classList.remove('open');backdrop.classList.remove('open');}
 function openBlock(wf,step){

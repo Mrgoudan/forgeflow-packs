@@ -33,6 +33,35 @@ def _git(env, repo, args, sub):
     return code, Path(out).read_text(errors="replace")
 
 
+_GUIDE_MAX = 14000     # the compiler dev guide is ~140 lines; inject it whole
+
+
+@context_provider("bsc_compiler_guide")
+def _bsc_compiler_guide(env, task, spec):
+    """The BSC *compiler*-engineering guide: how to edit each subsystem (AST
+    walkers, the ownership status-map encoding, borrow-checker dispatch, the
+    safe-zone width matrix) and the recurring change-shapes. Distinct from the
+    manual (the LANGUAGE spec) and the bsc-* skills (the language) — this is
+    how to MODIFY the compiler, which the fixer and explorer need to write a
+    correct patch / know where a defect lives. Read live from the git-tracked
+    vault doc, so edits flow in without a re-port. It does NOT override the
+    manual."""
+    path = (env.pack.params or {}).get("compiler_guide")
+    if not path:
+        return {}
+    try:
+        text = Path(path).read_text(errors="replace")
+    except OSError:
+        return {}
+    return {"guide": text[:_GUIDE_MAX],
+            "note": "How this compiler is built and changed — BSC code is "
+                    "ENABLE_BSC-guarded and isolated in BSC/ subdirs; the "
+                    "recurring bug shapes are a dispatch table missing an AST "
+                    "kind, a predicate defeated by a transparent wrapper, an "
+                    "un-normalized encoded field. Use it to place/shape a "
+                    "MINIMAL patch; the manual remains the language authority."}
+
+
 @context_provider("bsc_manual")
 def _bsc_manual(env, task, spec):
     """The in-repo manual as authoritative ground truth. Read at the branch

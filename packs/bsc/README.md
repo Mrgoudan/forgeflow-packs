@@ -31,10 +31,17 @@ in the db:
    git-tracked, editable source of truth; the db (`run/*.db`) is a
    disposable cache** you can wipe and rebuild. Delete the vault and the next
    campaign seeds *empty*.
-3. **Reference / archive — wired to nothing.** `prompts/`, `claude/`,
-   `knowledge/` are the original campaign's artifacts, kept for provenance.
-   The pack does **not** read them (our prompts live in `prompts/`, the
-   `bsc-*` skills load from the reviewed repo's `.claude`). Prunable.
+3. **Reference / archive — mostly wired to nothing.** The rest of the vault
+   is the original campaign's artifacts. Each has a *reason* it isn't ported:
+
+   | artifact | why it isn't ported |
+   |---|---|
+   | `knowledge/KNOWLEDGE.md` | **now IS wired** → `bsc_compiler_guide` provider (fixer + explorer): how to edit each compiler subsystem. |
+   | `knowledge/BiShengC_*Reference.md`, `*Semantic_Rules*.md`, `EBNF*.md` | language spec — would be a **competing ground truth** to the in-repo manual (the "manual wins" design forbids a second authority) and the `bsc-*` skills already cover it. |
+   | `knowledge/bishengc_rules.json` | structured rules with **no consumer** (no rule-engine block); wire only if a no-AI rule checker is built. |
+   | `knowledge/bishengc_training_dataset.jsonl` | **training data**, not runtime context — for fine-tuning, never injected. |
+   | `knowledge/TRIAGE.md` | a dated bug snapshot; its canonical form (`findings.jsonl`) is **already ported**. |
+   | `prompts/`, `claude/` | source prompts we already adapted into `prompts/`; the `bsc-*` skills load from the reviewed repo's `.claude`, not here. |
 
 > **Asymmetry to know:** runtime-GROWN knowledge (new findings from a hunt,
 > Oracle-Scout methods, explorer readings) lives ONLY in the db, not written
@@ -54,7 +61,8 @@ in the db:
 | `vault/bsc/code_notes/_methods.md` | 20 detection methods + bandit priors | → `methods` | the hunt bandit (`hunt.pick_region` dispatch) |
 | `vault/bsc/code_notes/_chains.md` | A–Z call-chain surfaces | → `chains` | explorer Mode-2 (`hunt_region`) |
 | `vault/bsc/code_notes/INDEX.md` + subsystem notes | per-file compiler-internals notes | → `readings` (`bsc.ingest_notes`) | explorer (`hunt_region`) + reviewer (`bsc_notes`) |
-| **the manual** (in the REPO, `clang/docs/.../BiShengCLanguageUserManual.md`) | authoritative correct behavior | **live** (git blob at head) | `bsc_manual` provider — overrides bsc-* skills |
+| `vault/bsc/knowledge/KNOWLEDGE.md` | how to edit each compiler subsystem + recurring change shapes | **live** (read at run) | `bsc_compiler_guide` provider → fixer + explorer |
+| **the manual** (in the REPO, `clang/docs/.../BiShengCLanguageUserManual.md`) | authoritative correct behavior (LANGUAGE) | **live** (git blob at head) | `bsc_manual` provider — overrides bsc-* skills |
 | db `regions` | file-level explore surface (dirs + `ENABLE_BSC` grep) | grown at runtime | `hunt.pick_region` |
 | db `findings/patterns/methods/chains/readings` | seed **+ runtime growth** | idempotent re-seed | every workflow |
 

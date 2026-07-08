@@ -64,6 +64,10 @@ params:
   # chains. bsc.ingest_seed ports these into native db rows (dedup catalogue,
   # defect classes, the method bench + bandit priors, call-chain surfaces).
   vault: /home/ziruichen/bsd/forgeflow-packs/vault/bsc
+  # the compiler-engineering guide (how to edit each BSC subsystem + the
+  # recurring change shapes). Injected into the fixer/explorer via the
+  # bsc_compiler_guide provider — distinct from the manual (language spec).
+  compiler_guide: /home/ziruichen/bsd/forgeflow-packs/vault/bsc/knowledge/KNOWLEDGE.md
 
   # user manual = ground truth, inside the reviewed repo
   manual_path: clang/docs/BSC/BiShengCLanguageUserManual.md

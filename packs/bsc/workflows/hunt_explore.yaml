@@ -22,7 +22,8 @@ steps:
     context:
       - hunt_region                  # leased region + its readings/chains
       - hunt_method                  # the bandit-selected detection method
-      - bsc_manual                   # authoritative correct behavior
+      - bsc_manual                   # authoritative correct behavior (language)
+      - bsc_compiler_guide           # how the subsystem is built (where bugs live)
       - patterns                     # known defect classes (don't re-file)
       - lessons: { task_kind: bughunt }
     outcomes:

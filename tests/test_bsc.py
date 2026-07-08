@@ -69,6 +69,21 @@ class BscGroundTruthTest(unittest.TestCase):
         self.assertEqual(r["status"], "CHANGED")
         self.assertIn("Manual", r["toc"])          # TOC (headings), not cover page
 
+    def test_compiler_guide_injected_when_configured(self):
+        guide = self.base / "GUIDE.md"
+        guide.write_text("# BSC compiler guide\nEdit ENABLE_BSC BSC/ files.\n")
+        pack = SimpleNamespace(paths={"repo": str(self.repo)},
+                               params={"compiler_guide": str(guide)}, tools={})
+        env = SimpleNamespace(pack=pack, data_dir=str(self.base / "data"))
+        r = CONTEXT_PROVIDERS["bsc_compiler_guide"](env, {"payload": {}}, {})
+        self.assertIn("ENABLE_BSC", r["guide"])
+
+    def test_compiler_guide_absent_when_unset(self):
+        pack = SimpleNamespace(paths={}, params={}, tools={})
+        env = SimpleNamespace(pack=pack, data_dir=str(self.base / "data"))
+        self.assertEqual(
+            CONTEXT_PROVIDERS["bsc_compiler_guide"](env, {"payload": {}}, {}), {})
+
     def test_gate_semantics_without_manual_flags(self):
         # a branch that touches semantics but NOT the manual
         git(self.repo, "checkout", "-qb", "bad")

@@ -22,7 +22,8 @@ steps:
     timeout_s: 1800
     context:
       - fix_target                   # the finding: title, evidence, repro
-      - bsc_manual                   # authoritative correct behavior
+      - bsc_manual                   # authoritative correct behavior (language)
+      - bsc_compiler_guide           # how to edit the subsystem (compiler)
       - lessons: { task_kind: fix }
     outcomes:
       PATCHED: verify

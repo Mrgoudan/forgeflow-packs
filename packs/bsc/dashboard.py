@@ -50,7 +50,9 @@ def cap_of(kind):
 
 
 # ------------------------------------------------------------ control flags
-_DEFAULTS = {"paused": "0", "cap_hunt": "1", "cap_review": "1", "cap_fix": "1"}
+_DEFAULTS = {"paused": "0", "cap_hunt": "1", "cap_review": "1", "cap_fix": "1",
+             "hunt_continuous": "0", "hunt_base": ""}
+POLL_S, FIX_S, HUNT_S = 300, 30, 60          # auto-trigger intervals
 
 
 def init_control(conn):
@@ -82,6 +84,35 @@ class Daemon:
         self.stop = threading.Event()
         self.last_error = None
         self.executed = 0
+        self._t = {"poll": 0.0, "fix": 0.0, "hunt": 0.0}
+
+    def tick(self):
+        """The daemon's own clock = the auto-triggers. Review polls for new
+        PRs; fix fires on any new triaged finding; hunt re-opens a round when
+        it's gone idle AND continuous is on. All gated by the capability flags
+        (so a disabled/`paused` capability never auto-fires)."""
+        now, c, subs = time.monotonic(), self.conn, self.eng.subscriptions
+        emits = []
+        if flag(c, "cap_review") == "1" and now - self._t["poll"] > POLL_S:
+            self._t["poll"] = now
+            emits.append(("forge.poll_requested", {}))
+        base = flag(c, "hunt_base") or "HEAD"
+        if flag(c, "cap_fix") == "1" and now - self._t["fix"] > FIX_S:
+            self._t["fix"] = now
+            for r in c.execute("SELECT key FROM findings WHERE state='triaged'"
+                               " AND branch IS NULL"):
+                emits.append(("fix.requested", {"finding": r["key"], "base": base}))
+        if (flag(c, "cap_hunt") == "1" and flag(c, "hunt_continuous") == "1"
+                and now - self._t["hunt"] > HUNT_S):
+            n = c.execute("SELECT count(*) FROM tasks WHERE kind LIKE 'hunt%'"
+                          " AND state IN ('pending','running','retry_wait')").fetchone()[0]
+            if n == 0:
+                self._t["hunt"] = now
+                emits.append(("hunt.round_requested", {"base": base}))
+        if emits:
+            with tx(c):
+                for name, payload in emits:
+                    db.emit_event(c, name, payload, subs)
 
     def loop(self):
         idle = 1.0
@@ -89,6 +120,10 @@ class Daemon:
             if flag(self.conn, "paused") == "1":
                 time.sleep(idle)
                 continue
+            try:
+                self.tick()
+            except Exception as e:
+                self.last_error = "tick: %s" % e
             try:
                 task = queue.claim(self.conn)
             except Exception as e:                       # keep the daemon alive
@@ -314,7 +349,12 @@ def do_action(conn, subs, action, params):
                         ("dash:%s disabled" % cap,))
     elif action == "run_hunt":
         base = params.get("base") or "HEAD"
+        set_flag(conn, "hunt_base", base)                  # continuous reuses it
         db.emit_event(conn, "hunt.round_requested", {"base": base}, subs)
+    elif action == "continuous":                           # hunt: keep re-opening
+        set_flag(conn, "hunt_continuous", "1" if params.get("on") else "0")
+        if params.get("base"):
+            set_flag(conn, "hunt_base", params["base"])
     elif action == "run_explore":                          # one explore turn
         db.emit_event(conn, "hunt.explore_requested", {"round": 0}, subs)
     elif action == "run_scout":                            # the method finder, alone
@@ -557,17 +597,22 @@ const CAP_ACTIONS={
         {a:'run_scout',t:'scout'},{a:'run_exploit',t:'exploit',pat:1}],
   fix:[{a:'run_fix',t:'▶ fix triaged',base:1}],
 };
+const AUTO={review:1,fix:1};                              // enabled == auto-trigger
 function renderCaps(s){
+  const cont=s.control.hunt_continuous==='1';
   caps.innerHTML=Object.keys(CAP_LABEL).map(c=>{
     const on=s.control['cap_'+c]==='1', acts=CAP_ACTIONS[c]||[];
     const needsBase=acts.some(x=>x.base), needsPat=acts.some(x=>x.pat);
     return `<div class=cap><div class=top><span class=name>${CAP_LABEL[c]}</span>
       <span class="pill ${on?'on':'off'}">${on?'enabled':'disabled'}</span>
+      ${AUTO[c]?`<span class=tag>${on?'auto ✓':'auto off'}</span>`:''}
+      ${c==='hunt'?`<span class=tag>${cont?'continuous ✓':'manual'}</span>`:''}
       <button onclick="ctl('${on?'disable':'enable'}',{cap:'${c}'})">${on?'disable':'enable'}</button></div>
-      ${needsBase?`<input id=base_${c} placeholder=base value="bishengc/15.0.4">`:''}
+      ${needsBase?`<input id=base_${c} placeholder=base value="${c==='hunt'&&s.control.hunt_base?s.control.hunt_base:'bishengc/15.0.4'}">`:''}
       ${needsPat?`<input id=pat_${c} placeholder="pattern id, e.g. C1">`:''}
       <div class=ctl>${acts.map(x=>`<button class="${x.t[0]==='▶'?'run':''}"
-        onclick="runAct('${c}','${x.a}',${x.pat?1:0})">${x.t}</button>`).join('')}</div></div>`;
+        onclick="runAct('${c}','${x.a}',${x.pat?1:0})">${x.t}</button>`).join('')}
+        ${c==='hunt'?`<button onclick="ctl('continuous',{on:${cont?0:1},base:(document.getElementById('base_hunt')||{}).value||''})">${cont?'continuous ✓':'go continuous'}</button>`:''}</div></div>`;
   }).join('');
 }
 function runAct(c,a,needsPat){

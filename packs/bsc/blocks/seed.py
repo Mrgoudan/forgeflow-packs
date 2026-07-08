@@ -143,11 +143,18 @@ def bsc_ingest_seed(ctx, task, prev):
                     " status=excluded.status",
                     (mid, desc[:400], "exhausted" if demoted else "active"))
                 n_m += 1
-    for aid, (t, g) in priors.items():               # warm-start the bandit
-        conn.execute("UPDATE methods SET trials=trials+?, verified_yield=verified_yield+?"
-                     " WHERE id=?", (t, g, aid))
+    # warm-start the bandit ONCE — the priors are ADDITIVE (trials += ...), so
+    # re-seeding would double them; a watermark makes it idempotent.
+    already = conn.execute(
+        "SELECT 1 FROM watermarks WHERE scope='seed.method_priors'").fetchone()
+    if not already:
+        for aid, (t, g) in priors.items():
+            conn.execute("UPDATE methods SET trials=trials+?,"
+                         " verified_yield=verified_yield+? WHERE id=?", (t, g, aid))
+        conn.execute("INSERT OR IGNORE INTO watermarks(scope, cursor)"
+                     " VALUES ('seed.method_priors', '1')")
     out["methods"] = n_m
-    out["method_priors"] = len(priors)
+    out["method_priors"] = 0 if already else len(priors)
 
     # --- _chains.md -> chains (Mode 2 surfaces) -------------------------
     n_c = 0

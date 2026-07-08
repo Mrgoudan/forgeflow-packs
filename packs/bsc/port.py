@@ -55,6 +55,43 @@ def main():
                 ctx(repo=pack.paths["repo"], notes_dir=notes), task, {})
         print("ingest_notes:", o2, r2)
 
+    # --- curate the PRIMARY reading methods to the top of the bench --------
+    # func-read (whole-function white-box) and call-chain-read (interprocedural
+    # chain walk) are the FOUNDATIONAL hunt methods. Imported findings don't
+    # record which bench-arm found them (found_by is free-text), so credit
+    # these two by attribution: the campaign found most of its bugs by reading.
+    import json as _json
+    from collections import Counter as _Counter
+    cnt = _Counter()
+    for row in conn.execute("SELECT detail FROM findings WHERE source='import'"):
+        try:
+            fb = (_json.loads(row["detail"] or "{}").get("found_by") or "").strip().lower()
+        except Exception:
+            fb = ""
+        if fb == "multi-agent":
+            cnt["call-chain-read"] += 1          # multi-agent = interprocedural
+        elif fb == "fuzz":
+            pass                                 # not a reading method
+        else:
+            cnt["src-reading"] += 1              # blank/glm/block-read = source read
+    PRIMARY = {
+        "src-reading": "func-read — invariant-driven white-box read of ONE "
+                       "function + hand probe (Mode 1); the campaign default",
+        "call-chain-read": "chain-read — walk a call chain (the chains surfaces) "
+                           "and check each hop invariant holds across the call "
+                           "boundary (Mode 2)",
+    }
+    with tx(conn):
+        for mid, desc in PRIMARY.items():
+            y = cnt.get(mid, 0)
+            conn.execute(
+                "INSERT INTO methods(id, description, status, trials, verified_yield)"
+                " VALUES (?,?, 'active', ?, ?)"
+                " ON CONFLICT(id) DO UPDATE SET status='active',"
+                " description=excluded.description, trials=?, verified_yield=?",
+                (mid, desc, y, y, y, y))
+    print("primary reading methods (attributed yield):", dict(cnt))
+
     print("\ndb now holds:")
     for tbl in ("findings", "patterns", "methods", "chains", "readings", "regions"):
         try:

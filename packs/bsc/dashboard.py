@@ -526,6 +526,7 @@ table{width:100%;border-collapse:collapse}
 td,th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px}
 th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
 .st-running{color:var(--accent)}.st-parked,.st-retry_wait{color:var(--warn)}.st-failed{color:var(--bad)}.st-pending{color:var(--fg)}
+.qrow{cursor:pointer}.qrow:hover{background:var(--surface2)}
 .capsec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;overflow-x:auto}
 .caph{font-size:15px;font-weight:600;color:var(--fg);margin:0 0 4px;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .caph a{font-size:12px}.sub{color:var(--muted);font-size:12px;margin-bottom:10px}
@@ -845,12 +846,17 @@ function renderFeed(s){
   feed.innerHTML=(s.events||[]).map(e=>`<div class=frow><span>${e.name}</span><span class=tag>${(e.at||'').slice(11,19)}</span></div>`).join('')||'<div class=frow><span class=tag>no activity yet</span></div>';
 }
 function kindCap(kind){const g=(WFS||[]).find(w=>w.name===kind);return g?g.cap:null;}
-function qrows(tasks){return tasks.length?('<tr><th>id</th><th>workflow</th><th>state</th><th>step</th><th>age</th></tr>'+tasks.map(t=>`<tr><td>${t.id}</td><td>${t.kind}</td><td class=st-${t.state}>${t.state}</td><td>${t.step||'—'}</td><td class=tag>${t.age}s</td></tr>`).join('')):'<tr><td class=tag>none active</td></tr>';}
+function qrows(tasks){return tasks.length?('<tr><th>id</th><th>workflow</th><th>state</th><th>step</th><th>age</th></tr>'+tasks.map(t=>`<tr class=qrow onclick="jumpTask('${t.kind}','${t.step||''}')" title="open this block"><td>${t.id}</td><td>${t.kind}</td><td class=st-${t.state}>${t.state}</td><td>${t.step||'—'}</td><td class=tag>${t.age}s</td></tr>`).join('')):'<tr><td class=tag>none active</td></tr>';}
+// click a queued task -> open the workflow and pop the block it's on (with its message)
+function jumpTask(kind,step){
+  location.hash='#/wf/'+encodeURIComponent(kind);
+  const g=(WFS||[]).find(w=>w.name===kind);
+  const s=step||(g&&g.steps.length?g.steps[0].name:'');   // pending -> entry block
+  if(s) setTimeout(()=>openBlock(kind,s),60);
+}
 function renderCapPage(cap){
-  const tasks=(STATE?STATE.queue:[]).filter(t=>kindCap(t.kind)===cap);
   view.innerHTML=`<a class=back href="#/">← home</a>
-    ${WFS?pipesHTML(WFS,cap):'<div class=tag>loading…</div>'}
-    <div class=h>Queue</div><div class=card><table><tbody>${qrows(tasks)}</tbody></table></div>`;
+    ${WFS?pipesHTML(WFS,cap):'<div class=tag>loading…</div>'}`;
 }
 function renderWorkflowPage(name){
   const g=(WFS||[]).find(w=>w.name===name);

@@ -554,6 +554,12 @@ background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer}
 .drawer .sec{margin-top:14px}.drawer .sec h4{font-size:11px;text-transform:uppercase;
 letter-spacing:.05em;color:var(--dim);margin:0 0 5px}
 .whatdoes{white-space:pre-wrap;color:var(--fg);font-size:12px;line-height:1.55}
+.caplink{display:block;color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px;text-decoration:none}
+.caplink:hover{text-decoration:underline}
+.wflink{display:flex;justify-content:space-between;align-items:center;padding:7px 11px;margin:3px 0;background:#0d1117;border:1px solid var(--line);border-radius:6px;text-decoration:none;color:var(--fg)}
+.wflink:hover{border-color:var(--accent)}
+.back{display:inline-block;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:12px}
+.back:hover{text-decoration:underline}
 pre{background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:10px;
 overflow-x:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;margin:0}
 .chip{display:inline-block;background:#21262d;border:1px solid var(--line);border-radius:12px;
@@ -566,19 +572,15 @@ th{color:var(--dim);font-weight:500;font-size:11px}.st-running{color:var(--accen
 .tag{font-size:10px;color:var(--dim)}
 </style></head><body>
 <header>
-  <h1>forgeflow · BSC control room</h1>
+  <a href="#/" style="text-decoration:none;color:inherit"><h1>forgeflow · BSC</h1></a>
+  <span id=crumb class=tag></span>
   <span id=daemon class=pill>daemon …</span>
   <span id=round class=pill></span>
   <div class=spacer></div>
   <button id=pausebtn onclick="ctl(paused?'resume':'pause')"></button>
   <span class=tag id=exec></span>
 </header>
-<main>
-  <section class=caps id=caps></section>
-  <section class=grid id=stats></section>
-  <div class=card><h2>Queue (active tasks)</h2><table id=queue><tbody></tbody></table></div>
-  <div id=workflows></div>
-</main>
+<main><div id=view></div></main>
 <div class=backdrop id=backdrop onclick="closeDrawer()"></div>
 <aside class=drawer id=drawer></aside>
 <script>
@@ -735,7 +737,7 @@ function wfNode(name,byName,cap,consMap,capOf,names,seen){
     `<div class=branch><span class=edge>${e} ↓</span>${sub(t)}</div>`).join('');
   return `<div class=treecol>${seg}<div class=fork></div><div class=branches>${br}</div></div>`;
 }
-function renderWorkflows(gs){
+function pipesHTML(gs, capOnly){
   const emitMap={},consMap={},capOf={},byName={};
   gs.forEach(g=>{capOf[g.name]=g.cap||'other';byName[g.name]=g;
     g.emits.forEach(e=>(emitMap[e]=emitMap[e]||[]).push(g.name));
@@ -743,21 +745,21 @@ function renderWorkflows(gs){
   const byCap={};gs.forEach(g=>{const c=g.cap||'other';(byCap[c]=byCap[c]||[]).push(g);});
   let html='';
   for(const [cap,label] of CAP_ORDER){
+    if(capOnly && cap!==capOnly) continue;
     const list=byCap[cap];if(!list||!list.length)continue;
     const names=new Set(list.map(g=>g.name)), seen=new Set();
-    // entry = a workflow triggered by an event NO in-cap workflow emits
     const entries=list.filter(g=>g.consumes.every(e=>
       !(emitMap[e]||[]).some(w=>names.has(w)&&w!==g.name)));
     const roots=(entries.length?entries:[list[0]]);
     html+=`<div class=capsec><div class=caph>${label}</div><div class=pipe>`;
-    roots.concat(list).forEach(r=>{                          // roots first, then any stragglers
+    roots.concat(list).forEach(r=>{
       if(seen.has(r.name))return;
       html+=`<div class="hop trig"><span class=ev>▼ ${r.consumes[0]||''} · trigger</span><div class=bar></div></div>`;
       html+=wfNode(r.name,byName,cap,consMap,capOf,names,seen);
     });
     html+='</div></div>';
   }
-  workflows.innerHTML=html;
+  return html;
 }
 function closeDrawer(){drawer.classList.remove('open');backdrop.classList.remove('open');}
 function openBlock(wf,step){
@@ -780,18 +782,71 @@ function openBlock(wf,step){
   });
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
-function refresh(){
-  j('/api/state').then(s=>{
-    paused=s.control.paused==='1';
-    daemon.textContent='daemon '+(s.daemon.alive?(paused?'paused':'running'):'down');
-    daemon.className='pill '+(s.daemon.alive&&!paused?'on':'off');
-    round.textContent='hunt round '+s.round;
-    document.getElementById('pausebtn').textContent=paused?'▶ resume all':'⏸ pause all';
-    exec.textContent=s.daemon.executed+' tasks run'+(s.daemon.error?(' · last err: '+s.daemon.error):'');
-    renderCaps(s);renderStats(s);renderQueue(s.queue);
-  });
-  j('/api/workflows').then(renderWorkflows);
+// ---- multi-page: a summary HOME, a pipeline page per capability, and a
+// ---- detail page per workflow. Client-side hash routing; data cached in
+// ---- STATE/WFS and re-rendered every 2s in place.
+let STATE=null, WFS=null;
+function updateHeader(){
+  if(!STATE)return;
+  paused=STATE.control.paused==='1';
+  daemon.textContent='daemon '+(STATE.daemon.alive?(paused?'paused':'running'):'down');
+  daemon.className='pill '+(STATE.daemon.alive&&!paused?'on':'off');
+  round.textContent='hunt round '+STATE.round;
+  document.getElementById('pausebtn').textContent=paused?'▶ resume all':'⏸ pause all';
+  exec.textContent=STATE.daemon.executed+' run'+(STATE.daemon.error?(' · err: '+STATE.daemon.error):'');
 }
+function renderWfNav(){
+  const run={};(STATE?STATE.queue:[]).forEach(t=>{if(t.state==='running')run[t.kind]=(run[t.kind]||0)+1;});
+  const byCap={};WFS.forEach(g=>{(byCap[g.cap||'other']=byCap[g.cap||'other']||[]).push(g);});
+  let h='';
+  for(const [cap,label] of CAP_ORDER){const list=byCap[cap];if(!list)continue;
+    h+=`<a class=caplink href="#/cap/${cap}">${label} — pipeline ›</a>`;
+    list.forEach(g=>{const r=run[g.name]||0;
+      h+=`<a class=wflink href="#/wf/${encodeURIComponent(g.name)}"><span>${g.name}</span>
+        <span class=tag>${g.steps.length} blocks${r?` · <b style="color:var(--ok)">● ${r} running</b>`:''} ›</span></a>`;});
+  }
+  wfnav.innerHTML=h;
+}
+function renderHome(){
+  view.innerHTML=`<section class=caps id=caps></section>
+    <section class=grid id=stats></section>
+    <div class=card><h2>Queue (active tasks)</h2><table id=queue><tbody></tbody></table></div>
+    <div class=card><h2>Workflows <span class=tag>open a pipeline or a single workflow</span></h2><div id=wfnav></div></div>`;
+  if(STATE){renderCaps(STATE);renderStats(STATE);renderQueue(STATE.queue);}
+  if(WFS)renderWfNav();
+}
+function renderCapPage(cap){
+  const label=(CAP_ORDER.find(x=>x[0]===cap)||[cap,cap])[1];
+  view.innerHTML=`<a class=back href="#/">← home</a>
+    ${WFS?pipesHTML(WFS,cap):'<div class=tag>loading…</div>'}`;
+}
+function renderWorkflowPage(name){
+  const g=(WFS||[]).find(w=>w.name===name);
+  if(!g){view.innerHTML='<a class=back href="#/">← home</a><div class=tag>loading…</div>';return;}
+  const by={};g.steps.forEach(s=>by[s.name]=s);
+  const root=g.steps.length?g.steps[0].name:null, cap=g.cap||'other';
+  const tasks=(STATE?STATE.queue:[]).filter(t=>t.kind===name);
+  view.innerHTML=`<a class=back href="#/">← home</a>
+    <div class=capsec><div class=caph>${name}
+      <span class=tag>${cap} · <a href="#/cap/${cap}">see full pipeline</a></span></div>
+      <div class=sub>consumes ${g.consumes.join(', ')||'—'} · emits ${g.emits.join(', ')||'—'}</div>
+      <div class=tree>${root?renderTree(g,root,by,new Set(),1):''}</div></div>
+    <div class=card><h2>Tasks (${name})</h2><table><tbody>${tasks.length?
+      ('<tr><th>id</th><th>state</th><th>step</th><th>age</th></tr>'+tasks.map(t=>
+      `<tr><td>${t.id}</td><td class=st-${t.state}>${t.state}</td><td>${t.step||'—'}</td><td class=tag>${t.age}s</td></tr>`).join(''))
+      :'<tr><td class=tag>none active</td></tr>'}</tbody></table></div>`;
+}
+function render(){
+  updateHeader();
+  const h=location.hash||'#/';
+  if(h.startsWith('#/wf/')){const n=decodeURIComponent(h.slice(5));crumb.textContent='› '+n;renderWorkflowPage(n);}
+  else if(h.startsWith('#/cap/')){const c=h.slice(6);crumb.textContent='› '+c+' pipeline';renderCapPage(c);}
+  else{crumb.textContent='';renderHome();}
+}
+function refresh(){
+  Promise.all([j('/api/state'),j('/api/workflows')]).then(([s,w])=>{STATE=s;WFS=w;render();}).catch(()=>{});
+}
+window.addEventListener('hashchange',render);
 refresh();setInterval(refresh,2000);
 </script></body></html>"""
 

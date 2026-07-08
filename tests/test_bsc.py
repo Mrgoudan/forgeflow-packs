@@ -115,6 +115,7 @@ blocks:
   - {rev}/blocks/providers.py
   - {hunt}/blocks/probe.py
   - {bsc}/blocks/bsc.py
+  - {bsc}/blocks/seed.py
   - {hunt}/blocks/conductor.py
 prompts:
   review: {bsc}/prompts/review.md
@@ -152,8 +153,10 @@ params:
   hunt_max_explorers: 6
   hunt_clang: "true"
   probe_include: {probes}
+  vault: {probes}/novault
   hunt_regions: [clang/lib/Sema/BSC]
-  hunt_methods: [{{ id: invariant-probe, description: probe }}]
+  hunt_region_grep: ""
+  hunt_region_scan: []
 """.format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
            rev=(PACKS / "packs" / "review"), hunt=(PACKS / "packs" / "hunt"),
            cli=cli, manual=MANUAL, pinned=pinned))

@@ -57,6 +57,25 @@ class ConductorTest(unittest.TestCase):
                                 {"id": 0, "attempts": 0, "payload": {}}, {})
         self.assertEqual(self.conn.execute("SELECT count(*) c FROM regions").fetchone()["c"], 3)
 
+    def test_seed_grep_discovers_guarded_files(self):
+        # the surface includes generic files that BRANCH on the feature guard,
+        # not just the whole-feature dirs.
+        d = tmpdir()
+        repo = d / "repo"
+        (repo / "clang/lib/Parse").mkdir(parents=True)
+        (repo / "clang/lib/Parse/ParseExpr.cpp").write_text(
+            "void f(){ if (getLangOpts().BSC) {} }\n")
+        (repo / "clang/lib/Parse/ParseOther.cpp").write_text("// nothing here\n")
+        conn = db.connect(d / "g.db")
+        with tx(conn):
+            get("hunt.seed").fn(
+                _ctx(conn, repo=str(repo), regions=[],
+                     region_grep=r"getLangOpts\(\)\.BSC", region_scan=["clang"]),
+                {"id": 0, "attempts": 0, "payload": {}}, {})
+        regions = [r["id"] for r in conn.execute("SELECT id FROM regions")]
+        self.assertIn("clang/lib/Parse/ParseExpr.cpp", regions)   # guarded -> in
+        self.assertNotIn("clang/lib/Parse/ParseOther.cpp", regions)  # unguarded -> out
+
     def test_pick_region_deterministic_and_leases(self):
         o, r = self._pick(1)
         self.assertEqual((o, r["region"]), ("leased", "a"))   # first by id
@@ -230,6 +249,7 @@ blocks:
   - {rev}/blocks/providers.py
   - {hunt}/blocks/probe.py
   - {bsc}/blocks/bsc.py
+  - {bsc}/blocks/seed.py
   - {hunt}/blocks/conductor.py
 prompts:
   review: {bsc}/prompts/review.md
@@ -266,8 +286,10 @@ params:
   hunt_max_explorers: 6
   hunt_clang: {clang}
   probe_include: {base}/probes
+  vault: {base}/novault
   hunt_regions: [ra, rb]
-  hunt_methods: [{{ id: invariant-probe, description: p }}]
+  hunt_region_grep: ""
+  hunt_region_scan: []
 """.format(base=base, bsc=bsc, rev=rev, hunt=hunt, fa=FAKE_AGENT,
            ex=explorer_cli, sc=sc, clang=fake_clang))
     return pack

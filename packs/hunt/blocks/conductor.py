@@ -33,7 +33,7 @@ import os
 from pathlib import Path
 
 from forgeflow.blocks import block
-from forgeflow.util import template
+from forgeflow.util import run_cmd, template
 
 _SRC_GLOBS = ("*.cpp", "*.c", "*.h", "*.cbs")
 
@@ -60,12 +60,20 @@ def _tick_round(conn):
 @block("hunt.seed", "state", {"ok"},
        accepts_context={"pack"}, required_params={"repo"})
 def hunt_seed(ctx, task, prev):
-    """Seed the region surface (FILE-level, not folder-level) and the methods
-    bench from pack config. Each configured entry is a repo dir that is
-    expanded to one region per source FILE — a file's ~dozens of functions is
-    a unit the explorer can actually work through and the dry-streak/cooldown
-    can meaningfully exhaust. An entry that isn't an existing dir is seeded
-    literally (tests / explicit regions). Idempotent (INSERT OR IGNORE)."""
+    """Seed the region surface (FILE-level) and, optionally, the methods bench.
+    The surface is the UNION of two sources:
+
+      - `regions`: repo dirs, each expanded to one region per source FILE (a
+        file's ~dozens of functions is a unit the explorer can work through
+        and dry-streak/cooldown can exhaust). A non-dir entry seeds literally
+        (tests / explicit regions).
+      - `region_grep` + `region_scan`: a feature-GUARD regex + roots to search;
+        seeds a region per matching file. This catches the surface the dirs
+        miss — a feature (e.g. BSC) is usually a few whole-feature dirs PLUS
+        guarded branches (`getLangOpts().BSC`) scattered through generic files.
+
+    Methods are seeded from `methods` when given (tests / bootstrap); the real
+    bench is normally ported by the pack's knowledge ingest. Idempotent."""
     conn = ctx["_conn"]
     repo = template(ctx["repo"], {})
     for entry in ctx.get("regions") or []:
@@ -81,12 +89,36 @@ def hunt_seed(ctx, task, prev):
         else:
             conn.execute("INSERT OR IGNORE INTO regions(id, repo) VALUES (?,?)",
                          (entry, repo))
+    grep = ctx.get("region_grep")
+    n_grep = _seed_grep_regions(ctx, conn, repo, template(grep, {}),
+                                ctx.get("region_scan") or ["."]) if grep else 0
     for m in ctx.get("methods") or []:
         conn.execute("INSERT OR IGNORE INTO methods(id, description, status)"
                      " VALUES (?,?, 'active')", (m["id"], m.get("description", "")))
     n_r = conn.execute("SELECT count(*) c FROM regions").fetchone()["c"]
     n_m = conn.execute("SELECT count(*) c FROM methods").fetchone()["c"]
-    return "ok", {"regions": n_r, "methods": n_m}
+    return "ok", {"regions": n_r, "grep_regions": n_grep, "methods": n_m}
+
+
+def _seed_grep_regions(ctx, conn, repo, pattern, roots):
+    """Seed one region per source file matching `pattern` under `roots`
+    (repo-relative). grep exit 1 (no match) is not an error."""
+    sd = Path(ctx.get("_step_dir", "."))
+    cmd = ["grep", "-rIlE", "--include=*.cpp", "--include=*.h", "--include=*.c",
+           "--include=*.cbs", pattern] + [os.path.join(repo, r) for r in roots]
+    code, out, err = run_cmd(cmd, ctx.get("_timeout_s", 120), sd / "grep",
+                             tools=ctx.get("_tools"))
+    if code not in (0, 1):
+        return 0
+    n = 0
+    for line in Path(out).read_text(errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        conn.execute("INSERT OR IGNORE INTO regions(id, repo) VALUES (?,?)",
+                     (os.path.relpath(line, repo), repo))
+        n += 1
+    return n
 
 
 @block("hunt.pick_region", "state", {"leased", "saturated"},
@@ -305,7 +337,6 @@ def hunt_merge_explore(ctx, task, prev):
 
 
 from forgeflow.contract import context_provider
-from forgeflow.util import run_cmd
 
 
 @context_provider("hunt_region")

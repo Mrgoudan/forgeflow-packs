@@ -115,17 +115,26 @@ params:
   hunt_max_explorers: 6              # concurrent region-lease cap
   hunt_clang: "{paths.repo}/build/bin/clang"   # base compiler the oracle runs
   probe_include: "{paths.repo}/libcbs/src/bishengc_safety"
-  # the explore surface — disjoint regions leased one Explorer at a time
+  # The explore surface — disjoint regions, one Explorer leased at a time.
+  # BSC is not confined to the */BSC dirs: it is these whole-feature dirs
+  # PLUS every generic file that BRANCHES on the BSC feature guard. So the
+  # surface = hunt_regions (whole-BSC dirs) UNION hunt_region_grep matches
+  # (guarded files in Parse/Sema/Serialization/...). ~40 guarded files the
+  # dir list alone would miss.
   hunt_regions:
     - clang/lib/Sema/BSC
     - clang/lib/Analysis/BSC
     - clang/lib/AST/BSC
     - clang/lib/Parse/BSC
     - libcbs
-  # the detection-method bench (how candidates get GENERATED). The
-  # verification oracle is separate and never rotates. Bandit-selected.
-  hunt_methods:
-    - { id: invariant-probe,  description: "probe a function's stated invariant directly" }
-    - { id: metamorphic-flip, description: "a transform that must not change the verdict but does" }
-    - { id: composition,      description: "two analyses disagreeing on one construct" }
-    - { id: reachability-gap, description: "an unhandled path a sibling case handles" }
+  # the BSC feature guard: files with a getLangOpts().BSC / isBSC branch are
+  # BSC-semantic surface too. (Widen to \bENABLE_BSC\b to include compile-time
+  # BSC scaffolding — ~215 files, much broader/noisier.)
+  hunt_region_grep: "getLangOpts\\(\\)\\.BSC|LangOpts\\.BSC|isBSC"
+  hunt_region_scan: [clang, libcbs]
+
+  # NOTE: the detection-method bench (how candidates get GENERATED) is NOT
+  # listed here — the real 20-method bench + its bandit priors are ported
+  # from the vault by bsc.ingest_seed at campaign start (hunt_round). The
+  # verification oracle is separate and never rotates. Bandit-selected;
+  # grown at runtime by the Oracle-Scout.

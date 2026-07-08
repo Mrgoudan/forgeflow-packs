@@ -1,18 +1,28 @@
-# Campaign start: seed the regions + methods bench, build base clang once,
-# run the no-AI finders (probe regression sweep), then kick off the explorer
-# auto-swap loop. Trigger with: emit hunt.round_requested {base: <branch>}.
+# Campaign start: port the vault knowledge (the real methods bench, findings,
+# playbook, chains), seed the region surface, build base clang once, run the
+# no-AI finders (probe regression sweep), then kick off the explorer auto-swap
+# loop. Trigger with: emit hunt.round_requested {base: <branch>}.
 workflow: hunt_round
 consumes: [hunt.round_requested]
 emits: [hunt.explore_requested]
 
 steps:
-  - name: seed
+  - name: ingest                     # port the accumulated knowledge (idempotent)
+    block: bsc.ingest_seed
+    timeout_s: 120
+    params:
+      repo: "{paths.repo}"
+      vault: "{pack.vault}"
+    outcomes: { ok: seed, error: seed }
+
+  - name: seed                       # region surface: whole-feature dirs + guarded files
     block: hunt.seed
-    timeout_s: 30
+    timeout_s: 120
     params:
       repo: "{paths.repo}"
       regions: "{pack.hunt_regions}"
-      methods: "{pack.hunt_methods}"
+      region_grep: "{pack.hunt_region_grep}"
+      region_scan: "{pack.hunt_region_scan}"
     outcomes: { ok: build_base }
 
   - name: build_base                 # base clang once for the whole campaign

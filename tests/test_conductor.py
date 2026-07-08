@@ -139,17 +139,28 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)                           # still one row
         self.assertIn("inv TWO corrected", rows[0]["summary"])
 
-    def test_bandit_tries_untried_first_then_by_index(self):
+    def test_method_dispatch_counts_and_diversifies(self):
+        # dispatch assigns an arm, counts the pull immediately, and records it
+        # on the task so the NEXT serialized explorer diverges (no monoculture).
+        _o, r1 = self._pick(1)
+        self.assertEqual(r1["method"], "m1")             # both untried -> lowest id
+        self.assertEqual(self.conn.execute(
+            "SELECT trials FROM methods WHERE id='m1'").fetchone()[0], 1)
+        _o, r2 = self._pick(2)
+        self.assertEqual(r2["method"], "m2")             # m1 counted -> untried m2 wins
+        # arm recorded on each task -> merge credits exactly what was used
+        self.assertEqual(self.conn.execute(
+            "SELECT json_extract(payload,'$.method') FROM tasks WHERE id=1"
+        ).fetchone()[0], "m1")
+
+    def test_method_provider_reads_dispatched_arm(self):
+        # the provider surfaces the arm dispatch recorded, it does NOT re-pick
         from forgeflow.contract import CONTEXT_PROVIDERS
         from types import SimpleNamespace
+        self._pick(1)                                    # dispatch m1 to task 1
         env = SimpleNamespace(conn=self.conn)
-        # both untried -> lowest id first (inf ties by id)
         m = CONTEXT_PROVIDERS["hunt_method"](env, {"id": 1, "payload": {}}, {})
         self.assertEqual(m["method"], "m1")
-        # give m1 trials with no yield, m2 still untried -> m2 (inf) wins
-        self.conn.execute("UPDATE methods SET trials=5 WHERE id='m1'")
-        m = CONTEXT_PROVIDERS["hunt_method"](env, {"id": 1, "payload": {}}, {})
-        self.assertEqual(m["method"], "m2")
 
 
 if __name__ == "__main__":

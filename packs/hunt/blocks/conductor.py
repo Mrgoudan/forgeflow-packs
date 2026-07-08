@@ -6,11 +6,15 @@ serialized through the single-writer queue so replaying the event log
 reproduces the run. These blocks are those rules:
 
 - hunt.seed          seed regions + methods bench from pack config (idempotent)
-- hunt.pick_region   lease the next region deterministically (cap-enforced)
-- hunt.pick_method   UCB bandit over the methods bench (deterministic, ties by id)
+- hunt.pick_region   lease the next region AND assign this turn's detection
+                     method (UCB *dispatch*: counts the pull immediately and
+                     records the arm on the task, so concurrent explorers
+                     diverge instead of all picking one argmax, and the merge
+                     credits the arm actually used — stable under concurrency).
 - hunt.merge_explore apply an explorer's VERIFIED result: file finding+pattern,
-                     update dry_streak/cooldown, and enqueue the replacement
-                     explorer (auto-swap) + an exploiter on a confirm.
+                     credit the dispatched arm's yield, update dry_streak/
+                     cooldown, enqueue the replacement explorer (auto-swap) +
+                     an exploiter on a confirm.
 
 Rounds are a logical clock in watermarks('hunt.round'); merge ticks it.
 Explore vs exploit balance is emergent (every confirm spawns one exploiter;
@@ -113,24 +117,42 @@ def hunt_pick_region(ctx, task, prev):
                              "round": rnd}
     conn.execute("UPDATE regions SET leased_by_task=? WHERE id=?",
                  (task["id"], row["id"]))
-    return "leased", {"region": row["id"], "round": rnd}
+    # dispatch the detection method: count the pull NOW (so the next
+    # serialized explorer sees the bump and diverges) and record the arm on
+    # the task, so merge credits exactly what this explorer used.
+    method = _pick_method(conn)
+    if method:
+        conn.execute("UPDATE methods SET trials=trials+1, last_used_round=?"
+                     " WHERE id=?", (rnd, method))
+        conn.execute("UPDATE tasks SET payload=json_set(payload,'$.method',?)"
+                     " WHERE id=?", (method, task["id"]))
+    return "leased", {"region": row["id"], "method": method, "round": rnd}
 
 
 def _pick_method(conn):
-    """Deterministic UCB bandit over the methods bench: index =
-    verified_yield/trials + sqrt(2*ln(round+1)/trials); untried methods get
-    +inf so they're tried first; argmax, ties by id. Pure function of db
-    state — pick (for the explorer's context) and credit (in merge) call this
-    same helper, so they agree as long as trials haven't moved between them."""
+    """Deterministic UCB bandit over the active methods bench. Score key
+    (compared as a tuple, argmax, ties by id):
+
+        (ucb, idle)   ucb  = verified_yield/trials + sqrt(2*ln(round+1)/trials)
+                             (untried = +inf, so unbenched methods go first)
+                      idle = rounds since last_used_round (recency: among
+                             near-equal arms, rotate to the one idle longest)
+
+    Pure function of db state. The CALLER (pick_region, at dispatch) counts
+    the pull and records the arm on the task, so this is never re-run to
+    'credit' — no re-pick drift under concurrency."""
     rnd = _round(conn) + 1
-    best, best_ix = None, -1.0
-    for m in conn.execute("SELECT id, trials, verified_yield FROM methods"
-                          " WHERE status='active' ORDER BY id"):
+    best, best_key = None, None
+    for m in conn.execute("SELECT id, trials, verified_yield, last_used_round"
+                          " FROM methods WHERE status='active' ORDER BY id"):
         t = m["trials"]
-        ix = float("inf") if t == 0 else (
+        ucb = float("inf") if t == 0 else (
             m["verified_yield"] / t + math.sqrt(2 * math.log(rnd) / t))
-        if ix > best_ix:
-            best, best_ix = m["id"], ix
+        lur = m["last_used_round"]
+        idle = rnd if lur is None else max(0, rnd - lur)
+        key = (ucb, idle)
+        if best_key is None or key > best_key:      # ORDER BY id => ties -> lowest id
+            best, best_key = m["id"], key
     return best
 
 
@@ -196,12 +218,15 @@ def hunt_merge_explore(ctx, task, prev):
     conn = ctx["_conn"]
     repo = template(ctx["repo"], {})
     # derive region from the lease (robust — the agent step doesn't pass prev
-    # through) and method from the SAME deterministic bandit the explorer saw
-    # (trials haven't moved yet, so it re-picks the same one), then credit.
+    # through); the arm is read from the task where dispatch recorded it.
     lr = conn.execute("SELECT id FROM regions WHERE leased_by_task=?",
                       (task["id"],)).fetchone()
     region = lr["id"] if lr else None
-    method = _pick_method(conn)
+    # the arm this explorer actually used, recorded at dispatch (not re-picked
+    # — re-picking here would drift as concurrent merges move the stats).
+    mr = conn.execute("SELECT json_extract(payload,'$.method') m FROM tasks"
+                      " WHERE id=?", (task["id"],)).fetchone()
+    method = mr["m"] if mr else None
     verified = (prev or {}).get("verified") or {}
     confirmed = bool(verified.get("confirmed"))
     # close the exploration->readings loop: persist this turn's function
@@ -210,9 +235,7 @@ def hunt_merge_explore(ctx, task, prev):
                                       (prev or {}).get("note") or {})
     rnd = _tick_round(conn)
     staged, emits = [], []
-
-    if method:
-        conn.execute("UPDATE methods SET trials=trials+1 WHERE id=?", (method,))
+    # (the trial/pull was counted at dispatch; here we only credit yield.)
 
     if region is not None:
         conn.execute("UPDATE regions SET leased_by_task=NULL WHERE id=?", (region,))
@@ -297,10 +320,13 @@ def _hunt_region(env, task, spec):
 
 @context_provider("hunt_method")
 def _hunt_method(env, task, spec):
-    """The detection method the bandit selected for this explore round — how
-    to GENERATE the candidate (invariant-probe, metamorphic-flip, …). The
-    verification oracle is separate and never rotates."""
-    m = _pick_method(env.conn)
+    """The detection method dispatched to this explorer (recorded on the task
+    at region-lease time) — how to GENERATE the candidate (invariant-probe,
+    metamorphic-flip, …). Read, not re-picked, so the prompt and the merge
+    credit agree. The verification oracle is separate and never rotates."""
+    mr = env.conn.execute("SELECT json_extract(payload,'$.method') m FROM tasks"
+                          " WHERE id=?", (task["id"],)).fetchone()
+    m = mr["m"] if mr else None
     if not m:
         return {}
     row = env.conn.execute("SELECT description FROM methods WHERE id=?",

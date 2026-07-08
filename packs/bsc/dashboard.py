@@ -573,14 +573,16 @@ function runAct(c,a,needsPat){
 function renderStats(s){
   stats.innerHTML=`
    <div class=card><h2>Tasks</h2>${kv(s.tasks)}</div>
-   <div class=card><h2>Findings</h2>${kv(s.findings)}</div>
+   <div class=card><h2>Findings (bugs)</h2>
+     <div class=row><span class=k><b>total</b></span><span><b>${Object.values(s.findings||{}).reduce((a,b)=>a+b,0)}</b></span></div>
+     ${kv(s.findings)}</div>
    <div class=card><h2>Methods</h2>${kv(s.methods)}
      <div class=row style="margin-top:6px"><span class=k>PRs opened</span><span>${s.prs}</span></div></div>
    <div class=card><h2>Regions</h2>
      <div class=row><span class=k>total</span><span>${s.regions.total}</span></div>
      <div class=row><span class=k>leased</span><span>${s.regions.leased}</span></div>
      <div class=row><span class=k>cooling</span><span>${s.regions.cooling}</span></div></div>
-   <div class=card><h2>Top methods (yield/trials)</h2>
+   <div class=card><h2>Method hit-rate <span class=tag>confirmed / dispatched · bandit signal, not the bug count</span></h2>
      ${(s.top_methods||[]).map(m=>`<div class=row><span class=k>${m.id}</span><span>${m.yield_}/${m.trials}</span></div>`).join('')||kv({})}</div>
    <div class=card><h2>Recent events</h2>
      ${(s.events||[]).map(e=>`<div class=row><span class=k>${e.name}</span><span class=tag>${(e.at||'').slice(11,19)}</span></div>`).join('')||kv({})}</div>`;
@@ -641,38 +643,58 @@ function orderByFlow(list){
 }
 const CAP_ORDER=[['review','Review pipeline'],['hunt','Bug-hunt campaign'],
                  ['fix','Fix loop'],['other','Other']];
+// one workflow's segment: its label + block tree + cross-cap/loop notes.
+function wfSeg(g,cap,consMap,capOf,loops){
+  const max=Math.max(1,...g.steps.map(s=>s.ran));
+  const by={};g.steps.forEach(s=>by[s.name]=s);
+  const root=g.steps.length?g.steps[0].name:null;
+  const cross=g.emits.map(e=>{const c=(consMap[e]||[]).filter(w=>capOf[w]!==cap&&w!==g.name);
+    return c.length?`<b>${e}</b> ⇢ ${c.join(', ')}`:null;}).filter(Boolean);
+  return `<div class=seg><span class=seglabel>▸ <b>${g.name}</b></span>
+    ${root?renderTree(g,root,by,new Set(),max):''}
+    ${cross.length?`<div class=crossnote>also emits ${cross.join(' · ')}</div>`:''}
+    ${loops.length?`<div class=crossnote>↺ ${loops.join(' · ')}</div>`:''}</div>`;
+}
+// walk the WORKFLOW graph: 1 downstream = spine (hand-off, vertical);
+// >1 = concurrent spawns drawn side by side (e.g. exploit ∥ scout off explore).
+function wfNode(name,byName,cap,consMap,capOf,names,seen){
+  seen.add(name);
+  const g=byName[name], kids=[], loops=[];
+  g.emits.forEach(e=>(consMap[e]||[]).forEach(t=>{
+    if(t===name) loops.push(e+' ↺');
+    else if(!names.has(t)) {/* cross-cap: shown in wfSeg */}
+    else if(seen.has(t)) loops.push(e+'→'+t+' ↺');
+    else { seen.add(t); kids.push([e,t]); }
+  }));
+  let cont='';
+  if(kids.length===1){const [e,t]=kids[0];
+    cont=`<div class=hop><div class=bar></div><span class=ev>${e}</span><div class=bar></div></div>`
+        +wfNode(t,byName,cap,consMap,capOf,names,seen);
+  }else if(kids.length>1){
+    cont=`<div class=fork></div><div class=branches>`+kids.map(([e,t])=>
+      `<div class=branch><span class=edge>${e} ↓</span>${wfNode(t,byName,cap,consMap,capOf,names,seen)}</div>`).join('')+`</div>`;
+  }
+  return `<div class=treecol>${wfSeg(g,cap,consMap,capOf,loops)}${cont}</div>`;
+}
 function renderWorkflows(gs){
-  // event wiring across ALL workflows (so cross-capability links show too)
-  const emitMap={},consMap={},capOf={};
-  gs.forEach(g=>{capOf[g.name]=g.cap||'other';
+  const emitMap={},consMap={},capOf={},byName={};
+  gs.forEach(g=>{capOf[g.name]=g.cap||'other';byName[g.name]=g;
     g.emits.forEach(e=>(emitMap[e]=emitMap[e]||[]).push(g.name));
     g.consumes.forEach(e=>(consMap[e]=consMap[e]||[]).push(g.name));});
   const byCap={};gs.forEach(g=>{const c=g.cap||'other';(byCap[c]=byCap[c]||[]).push(g);});
   let html='';
   for(const [cap,label] of CAP_ORDER){
     const list=byCap[cap];if(!list||!list.length)continue;
-    const ordered=orderByFlow(list),pos={};ordered.forEach((g,i)=>pos[g.name]=i);
-    // ONE card per capability; the workflows flow inside it as a single tree,
-    // joined by their events (a hop) — so it reads as one process, not four.
+    const names=new Set(list.map(g=>g.name)), seen=new Set();
+    // entry = a workflow triggered by an event NO in-cap workflow emits
+    const entries=list.filter(g=>g.consumes.every(e=>
+      !(emitMap[e]||[]).some(w=>names.has(w)&&w!==g.name)));
+    const roots=(entries.length?entries:[list[0]]);
     html+=`<div class=capsec><div class=caph>${label}</div><div class=pipe>`;
-    ordered.forEach((g,i)=>{
-      const inEv=g.consumes[0]||'';
-      const src=(emitMap[inEv]||[]).filter(w=>w!==g.name);
-      if(i===0 && !src.length){
-        html+=`<div class="hop trig"><span class=ev>▼ ${inEv} · trigger</span><div class=bar></div></div>`;
-      }else{
-        const loop=src.some(w=>pos[w]!=null && pos[w]>=i);       // back-edge = loop
-        html+=`<div class="hop ${loop?'loop':''}"><div class=bar></div>
-          <span class=ev>${inEv}${loop?' ↺':''}</span><div class=bar></div></div>`;
-      }
-      const max=Math.max(1,...g.steps.map(s=>s.ran));
-      const by={};g.steps.forEach(s=>by[s.name]=s);
-      const root=g.steps.length?g.steps[0].name:null;
-      const cross=g.emits.map(e=>{const c=(consMap[e]||[]).filter(w=>capOf[w]!==cap);
-        return c.length?`<b>${e}</b> ⇢ ${c.join(', ')}`:null;}).filter(Boolean);
-      html+=`<div class=seg><span class=seglabel>▸ <b>${g.name}</b></span>
-        ${root?renderTree(g,root,by,new Set(),max):''}
-        ${cross.length?`<div class=crossnote>also emits ${cross.join(' · ')}</div>`:''}</div>`;
+    roots.concat(list).forEach(r=>{                          // roots first, then any stragglers
+      if(seen.has(r.name))return;
+      html+=`<div class="hop trig"><span class=ev>▼ ${r.consumes[0]||''} · trigger</span><div class=bar></div></div>`;
+      html+=wfNode(r.name,byName,cap,consMap,capOf,names,seen);
     });
     html+='</div></div>';
   }

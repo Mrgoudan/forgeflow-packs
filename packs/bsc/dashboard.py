@@ -435,7 +435,18 @@ input{font:inherit;background:#0d1117;color:var(--fg);border:1px solid var(--lin
 border-radius:6px;padding:3px 6px;width:130px}
 .wf{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto}
 .wf h3{margin:0 0 2px;font-size:13px}.wf .sub{color:var(--dim);font-size:11px;margin-bottom:10px}
-.blocks{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.tree{overflow-x:auto;padding:8px 2px}
+.treecol{display:flex;flex-direction:column;align-items:center}
+.tree .block{width:184px;margin:0}
+.down{height:24px;display:flex;align-items:center;justify-content:center;position:relative}
+.down::before{content:'';position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.down span{background:var(--card);padding:0 6px;position:relative;z-index:1;color:var(--dim);font-size:10px}
+.branches{display:flex;gap:16px;align-items:flex-start;padding-top:2px}
+.branch{display:flex;flex-direction:column;align-items:center}
+.branch>.edge{color:var(--accent);font-size:10px;margin:2px 0 5px;white-space:nowrap}
+.termpills{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:5px 0 2px;max-width:190px}
+.pillt{font-size:10px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.pillt.ref{border-style:dashed;cursor:pointer;color:var(--accent)}
 .block{background:#0d1117;border:1px solid var(--line);border-radius:7px;padding:8px 10px;
 cursor:pointer;transition:transform .08s;position:relative;overflow:hidden}
 .block:hover{transform:translateY(-2px);border-color:var(--accent)}
@@ -532,20 +543,49 @@ function renderQueue(q){
 const esc=s=>(s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function heat(ran,max){if(!ran)return'';const t=Math.min(1,ran/(max||1));
   return `background:rgba(88,166,255,${(0.06+t*0.20).toFixed(2)})`;}
+function stepCard(g,st,max){
+  return `<div class="block ${st.running?'running':''}" style="${heat(st.ran,max)}"
+     onclick="openBlock('${g.name}','${st.name}')">
+     <div class=sn>${st.name}</div><div class=bl>${esc(st.block)}</div>
+     <div class=ran><span class=badge>${st.ran}</span> ran${st.ms?` · ${st.ms}ms`:''}
+       ${st.running?`<span class="badge run">● ${st.running} now</span>`:''}</div></div>`;
+}
+// top-down tree: one forward step = spine (down), many = branches (fan out);
+// terminal outcomes (done/parked/...) are pills; a step reached more than once
+// (a DAG join like `merge`) expands at its first path and elsewhere is a dashed
+// ref pill. Forward targets are reserved before expanding so joins dedup.
+function renderTree(g,name,by,seen,max){
+  const st=by[name]; if(!st) return '';
+  seen.add(name);
+  const groups=new Map();                          // target -> [outcomes]
+  Object.entries(st.outcomes||{}).forEach(([o,t])=>{
+    if(!groups.has(t)) groups.set(t,[]); groups.get(t).push(o);});
+  const fwd=[], pills=[];
+  for(const [t,outs] of groups){
+    if(by[t] && !seen.has(t)){ seen.add(t); fwd.push([t,outs]); }  // reserve now
+    else pills.push([t,outs,by[t]?'ref':'end']);                   // terminal or join
+  }
+  const pillHtml = pills.length?`<div class=termpills>${pills.map(([t,outs,k])=>
+    `<span class="pillt ${k}" ${k==='ref'?`onclick="event.stopPropagation();openBlock('${g.name}','${t}')"`:''}>${outs.join('/')}→${t}</span>`).join('')}</div>`:'';
+  let cont='';
+  if(fwd.length===1){const [t,outs]=fwd[0];
+    cont=`<div class=down><span>${outs.join('/')} ↓</span></div>`+renderTree(g,t,by,seen,max);
+  }else if(fwd.length>1){
+    cont=`<div class=branches>${fwd.map(([t,outs])=>
+      `<div class=branch><span class=edge>${outs.join('/')} ↓</span>${renderTree(g,t,by,seen,max)}</div>`).join('')}</div>`;
+  }
+  return `<div class=treecol>${stepCard(g,st,max)}${pillHtml}${cont}</div>`;
+}
 function renderWorkflows(gs){
   workflows.innerHTML=gs.map(g=>{
     const max=Math.max(1,...g.steps.map(s=>s.ran));
+    const by={};g.steps.forEach(s=>by[s.name]=s);
+    const root=g.steps.length?g.steps[0].name:null;
     return `<div class=wf>
-    <h3>${g.name} <span class=tag>${g.cap||''}</span></h3>
-    <div class=sub>consumes ${g.consumes.join(', ')||'—'} · emits ${g.emits.join(', ')||'—'}</div>
-    <div class=blocks>${g.steps.map(st=>`
-      <div class="block ${st.running?'running':''}" style="${heat(st.ran,max)}"
-           onclick="openBlock('${g.name}','${st.name}')">
-        <div class=sn>${st.name}</div><div class=bl>${esc(st.block)}</div>
-        <div class=ran><span class=badge>${st.ran}</span> ran${st.ms?` · ${st.ms}ms`:''}
-          ${st.running?`<span class="badge run">● ${st.running} now</span>`:''}</div>
-        <div class=out>${Object.entries(st.outcomes).map(([o,t])=>`${o}→${t}`).join('  ')||'—'}</div>
-      </div>`).join('')}</div></div>`;}).join('');
+      <h3>${g.name} <span class=tag>${g.cap||''}</span></h3>
+      <div class=sub>consumes ${g.consumes.join(', ')||'—'} · emits ${g.emits.join(', ')||'—'}</div>
+      <div class=tree>${root?renderTree(g,root,by,new Set(),max):''}</div></div>`;
+  }).join('');
 }
 function closeDrawer(){drawer.classList.remove('open');backdrop.classList.remove('open');}
 function openBlock(wf,step){

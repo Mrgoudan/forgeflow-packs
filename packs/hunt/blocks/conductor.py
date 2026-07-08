@@ -19,6 +19,7 @@ every return spawns one replacement explorer) — not a knob.
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import math
 import os
@@ -31,6 +32,8 @@ _SRC_GLOBS = ("*.cpp", "*.c", "*.h", "*.cbs")
 
 COOLDOWN_C = 3          # rounds a region cools after dry_streak hits the limit
 DRY_LIMIT = 3           # consecutive dry explores -> cooldown
+_SUMMARY_CAP = 400      # reading summary (prompt digest) length
+_FACTS_CAP = 8000       # reading facts (full note) length
 
 
 def _round(conn):
@@ -131,6 +134,54 @@ def _pick_method(conn):
     return best
 
 
+def _record_reading(conn, repo, region, note):
+    """Persist the explorer's function reading NATIVELY — the exploration end
+    of the loop bsc.ingest_notes seeds (readings become 'indistinguishable
+    from readings the agent produces itself'). Keyed by (file, content-hash):
+
+      - new file, or the file changed (hash moved) -> INSERT a fresh reading
+        and supersede this file's stale campaign notes (the imported 'seed'
+        reading is kept as provenance);
+      - same code re-read -> UPDATE in place ONLY if the invariant/candidates
+        changed (the old note was wrong/refined) — identical re-read is a
+        no-op, so re-affirming a function doesn't churn the table.
+
+    Returns True iff a row was written (new or corrected)."""
+    invariant = (note.get("invariant") or "").strip()
+    if not region or not invariant:
+        return False
+    obj = (note.get("object") or "").strip()
+    summary = ("%s — %s" % (obj, invariant)).strip(" —")[:_SUMMARY_CAP]
+    facts = json.dumps(note)[:_FACTS_CAP]
+    try:
+        sha = hashlib.sha1(Path(os.path.join(repo, region)).read_bytes()).hexdigest()[:12]
+    except OSError:
+        sha = "hunt"                                     # file gone/unreadable
+    row = conn.execute("SELECT id FROM code_objects WHERE repo=? AND path=?"
+                       " AND symbol IS NULL", (repo, region)).fetchone()
+    if row:
+        obj_id = row["id"]
+        conn.execute("UPDATE code_objects SET last_seen_sha=? WHERE id=?", (sha, obj_id))
+    else:
+        obj_id = conn.execute(
+            "INSERT INTO code_objects(repo, path, symbol, kind, first_seen_sha,"
+            " last_seen_sha) VALUES (?,?,NULL,'file',?,?)", (repo, region, sha, sha)
+        ).lastrowid
+    ex = conn.execute("SELECT summary, facts FROM readings WHERE object_id=? AND sha=?",
+                      (obj_id, sha)).fetchone()
+    if ex is None:                                       # new file / changed code
+        conn.execute("DELETE FROM readings WHERE object_id=? AND sha NOT IN (?, 'seed')",
+                     (obj_id, sha))
+        conn.execute("INSERT INTO readings(object_id, run_id, sha, summary, facts)"
+                     " VALUES (?, NULL, ?, ?, ?)", (obj_id, sha, summary, facts))
+        return True
+    if ex["summary"] != summary or ex["facts"] != facts:  # old note was wrong
+        conn.execute("UPDATE readings SET summary=?, facts=? WHERE object_id=? AND sha=?",
+                     (summary, facts, obj_id, sha))
+        return True
+    return False                                         # unchanged -> no churn
+
+
 @block("hunt.merge_explore", "state", {"confirmed", "dry", "done"},
        accepts_context={"pack"}, required_params={"repo"})
 def hunt_merge_explore(ctx, task, prev):
@@ -153,6 +204,10 @@ def hunt_merge_explore(ctx, task, prev):
     method = _pick_method(conn)
     verified = (prev or {}).get("verified") or {}
     confirmed = bool(verified.get("confirmed"))
+    # close the exploration->readings loop: persist this turn's function
+    # reading (on every path — a dry turn still refines the invariant).
+    reading_written = _record_reading(conn, repo, region,
+                                      (prev or {}).get("note") or {})
     rnd = _tick_round(conn)
     staged, emits = [], []
 
@@ -202,11 +257,12 @@ def hunt_merge_explore(ctx, task, prev):
     if nxt is not None:
         emits.append({"op": "emit_event", "name": "hunt.explore_requested",
                       "payload": {"round": rnd}})
-        result = {"round": rnd, "region": region, "_staged": staged + emits}
+        result = {"round": rnd, "region": region, "reading_written": reading_written,
+                  "_staged": staged + emits}
         return outcome, result
     # campaign saturated: nothing to hand off
-    return "done", {"round": rnd, "region": region, "_staged": staged + emits,
-                    "campaign": "saturated"}
+    return "done", {"round": rnd, "region": region, "reading_written": reading_written,
+                    "_staged": staged + emits, "campaign": "saturated"}
 
 
 from forgeflow.contract import context_provider
@@ -264,7 +320,7 @@ def hunt_verify_candidate(ctx, task, prev):
     """
     res = (prev or {})
     passthrough = {"region": res.get("region"), "method": res.get("method"),
-                   "round": res.get("round")}
+                   "round": res.get("round"), "note": res.get("note")}
     verdict = res.get("verdict")
     finding = res.get("finding") or {}
     if verdict != "CONFIRMED_NEW" or not finding.get("probe"):

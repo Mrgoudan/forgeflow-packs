@@ -121,6 +121,24 @@ class ConductorTest(unittest.TestCase):
                                               {"id": 999, "attempts": 0, "payload": {}}, {})
         self.assertEqual(o, "saturated")
 
+    def test_reading_loop_add_update_no_churn(self):
+        # the exploration->readings loop: new note writes, corrected note
+        # updates in place, identical re-read is a no-op (governance: one
+        # reading per (file, content), latest understanding wins).
+        rec = get("hunt.merge_explore").fn.__globals__["_record_reading"]
+        n1 = {"object": "fn", "invariant": "inv one", "candidates": ["a"]}
+        self.assertTrue(rec(self.conn, "r", "a", n1))            # new -> written
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) c FROM readings").fetchone()["c"], 1)
+        self.assertFalse(rec(self.conn, "r", "a", n1))           # identical -> no churn
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) c FROM readings").fetchone()["c"], 1)
+        n2 = {"object": "fn", "invariant": "inv TWO corrected", "candidates": ["a"]}
+        self.assertTrue(rec(self.conn, "r", "a", n2))            # changed -> update
+        rows = self.conn.execute("SELECT summary FROM readings").fetchall()
+        self.assertEqual(len(rows), 1)                           # still one row
+        self.assertIn("inv TWO corrected", rows[0]["summary"])
+
     def test_bandit_tries_untried_first_then_by_index(self):
         from forgeflow.contract import CONTEXT_PROVIDERS
         from types import SimpleNamespace
@@ -231,3 +249,7 @@ class HuntLoopTest(unittest.TestCase):
         # no unvetted findings from a dry campaign
         self.assertEqual(eng.conn.execute(
             "SELECT count(*) c FROM findings").fetchone()["c"], 0)
+        # ...but exploration still accumulated function readings (the loop
+        # runs on dry turns too), one per region explored
+        self.assertGreaterEqual(eng.conn.execute(
+            "SELECT count(*) c FROM readings").fetchone()["c"], 1)

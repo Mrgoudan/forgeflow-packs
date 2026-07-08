@@ -92,10 +92,11 @@ class Daemon:
         it's gone idle AND continuous is on. All gated by the capability flags
         (so a disabled/`paused` capability never auto-fires)."""
         now, c, subs = time.monotonic(), self.conn, self.eng.subscriptions
+        nonce = int(time.time())          # keeps repeat triggers from deduping
         emits = []
         if flag(c, "cap_review") == "1" and now - self._t["poll"] > POLL_S:
             self._t["poll"] = now
-            emits.append(("forge.poll_requested", {}))
+            emits.append(("forge.poll_requested", {"poll": nonce}))
         base = flag(c, "hunt_base") or "HEAD"
         if flag(c, "cap_fix") == "1" and now - self._t["fix"] > FIX_S:
             self._t["fix"] = now
@@ -108,7 +109,7 @@ class Daemon:
                           " AND state IN ('pending','running','retry_wait')").fetchone()[0]
             if n == 0:
                 self._t["hunt"] = now
-                emits.append(("hunt.round_requested", {"base": base}))
+                emits.append(("hunt.round_requested", {"base": base, "kick": nonce}))
         if emits:
             with tx(c):
                 for name, payload in emits:
@@ -350,15 +351,16 @@ def do_action(conn, subs, action, params):
     elif action == "run_hunt":
         base = params.get("base") or "HEAD"
         set_flag(conn, "hunt_base", base)                  # continuous reuses it
-        db.emit_event(conn, "hunt.round_requested", {"base": base}, subs)
+        db.emit_event(conn, "hunt.round_requested",
+                      {"base": base, "kick": int(time.time())}, subs)
     elif action == "continuous":                           # hunt: keep re-opening
         set_flag(conn, "hunt_continuous", "1" if params.get("on") else "0")
         if params.get("base"):
             set_flag(conn, "hunt_base", params["base"])
     elif action == "run_explore":                          # one explore turn
-        db.emit_event(conn, "hunt.explore_requested", {"round": 0}, subs)
+        db.emit_event(conn, "hunt.explore_requested", {"round": int(time.time())}, subs)
     elif action == "run_scout":                            # the method finder, alone
-        db.emit_event(conn, "hunt.scout_requested", {"round": 0}, subs)
+        db.emit_event(conn, "hunt.scout_requested", {"round": int(time.time())}, subs)
     elif action == "run_exploit":                          # a saved pattern, alone
         pat = (params.get("pattern") or "").strip()
         if not pat:
@@ -366,7 +368,7 @@ def do_action(conn, subs, action, params):
         db.emit_event(conn, "hunt.pattern_confirmed", {"pattern": pat}, subs)
         return {"ok": True, "pattern": pat}
     elif action == "run_review":
-        db.emit_event(conn, "forge.poll_requested", {}, subs)
+        db.emit_event(conn, "forge.poll_requested", {"poll": int(time.time())}, subs)
     elif action == "run_fix":
         base = params.get("base") or "HEAD"
         n = 0

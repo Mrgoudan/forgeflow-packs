@@ -127,10 +127,10 @@ params:
     - clang/lib/AST/BSC
     - clang/lib/Parse/BSC
     - libcbs
-  # the BSC feature guard: files with a getLangOpts().BSC / isBSC branch are
-  # BSC-semantic surface too. (Widen to \bENABLE_BSC\b to include compile-time
-  # BSC scaffolding — ~215 files, much broader/noisier.)
-  hunt_region_grep: "getLangOpts\\(\\)\\.BSC|LangOpts\\.BSC|isBSC"
+  # the BSC marker: every BSC-touched file is tagged with the ENABLE_BSC
+  # compile-time macro. That IS the surface — seed a region per file carrying
+  # it (word-bounded so ENABLE_BSC_* variants don't false-match).
+  hunt_region_grep: "\\bENABLE_BSC\\b"
   hunt_region_scan: [clang, libcbs]
 
   # NOTE: the detection-method bench (how candidates get GENERATED) is NOT

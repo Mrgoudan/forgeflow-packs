@@ -433,8 +433,10 @@ button.stop{color:var(--warn)}.caps{display:grid;gap:12px;grid-template-columns:
 .cap .name{font-weight:600;text-transform:capitalize}.cap .ctl{display:flex;gap:6px;margin-top:8px}
 input{font:inherit;background:#0d1117;color:var(--fg);border:1px solid var(--line);
 border-radius:6px;padding:3px 6px;width:130px}
-.wf{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto}
-.wf h3{margin:0 0 2px;font-size:13px}.wf .sub{color:var(--dim);font-size:11px;margin-bottom:10px}
+.seg{display:flex;flex-direction:column;align-items:center}
+.seglabel{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:10px;
+padding:1px 9px;margin-bottom:4px}.seglabel b{color:var(--fg)}
+.crossnote{font-size:11px;color:var(--dim);margin:4px 0 2px}.crossnote b{color:#79c0ff}
 .tree{overflow-x:auto;padding:8px 2px}
 .treecol{display:flex;flex-direction:column;align-items:center}
 .tree .block{width:184px;margin:0}
@@ -450,14 +452,16 @@ border-radius:6px;padding:3px 6px;width:130px}
 .termpills{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:5px 0 2px;max-width:190px}
 .pillt{font-size:10px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
 .pillt.ref{border-style:dashed;cursor:pointer;color:var(--accent)}
-.capsec{margin-bottom:22px}.caph{font-size:12px;text-transform:uppercase;letter-spacing:.06em;
-color:var(--accent);margin:4px 0;border-bottom:1px solid var(--line);padding-bottom:5px}
-.evband{display:flex;flex-direction:column;align-items:center;color:var(--dim);font-size:12px;margin:0}
-.evband .ev{background:#0d2a4d;border:1px solid #1f6feb;border-radius:12px;padding:1px 10px;color:#79c0ff;white-space:nowrap}
-.evband .bar{width:1px;height:14px;background:#1f6feb}
-.evband.loop .ev{background:#3d2c00;border-color:var(--warn);color:var(--warn)}
-.emits{color:var(--dim);font-size:11px;margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
-.emits b{color:#79c0ff}
+/* one card per capability; workflows flow inside it as a single tree */
+.capsec{background:var(--card);border:1px solid var(--line);border-radius:8px;
+padding:14px 16px;margin-bottom:16px;overflow-x:auto}
+.caph{font-size:13px;color:var(--accent);margin:0 0 4px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.pipe{display:flex;flex-direction:column;align-items:center}
+.hop{display:flex;flex-direction:column;align-items:center;margin:0}
+.hop .bar{width:1px;height:13px;background:#1f6feb}
+.hop .ev{background:#0d2a4d;border:1px solid #1f6feb;border-radius:12px;padding:1px 11px;color:#79c0ff;font-size:11px;white-space:nowrap}
+.hop.trig .ev{background:#161b22;border-color:var(--line);color:var(--dim)}
+.hop.loop .ev{background:#3d2c00;border-color:var(--warn);color:var(--warn)}
 .block{background:#0d1117;border:1px solid var(--line);border-radius:7px;padding:8px 10px;
 cursor:pointer;transition:transform .08s;position:relative;overflow:hidden}
 .block:hover{transform:translateY(-2px);border-color:var(--accent)}
@@ -604,34 +608,38 @@ const CAP_ORDER=[['review','Review pipeline'],['hunt','Bug-hunt campaign'],
                  ['fix','Fix loop'],['other','Other']];
 function renderWorkflows(gs){
   // event wiring across ALL workflows (so cross-capability links show too)
-  const emitMap={},consMap={};
-  gs.forEach(g=>{g.emits.forEach(e=>(emitMap[e]=emitMap[e]||[]).push(g.name));
-                 g.consumes.forEach(e=>(consMap[e]=consMap[e]||[]).push(g.name));});
+  const emitMap={},consMap={},capOf={};
+  gs.forEach(g=>{capOf[g.name]=g.cap||'other';
+    g.emits.forEach(e=>(emitMap[e]=emitMap[e]||[]).push(g.name));
+    g.consumes.forEach(e=>(consMap[e]=consMap[e]||[]).push(g.name));});
   const byCap={};gs.forEach(g=>{const c=g.cap||'other';(byCap[c]=byCap[c]||[]).push(g);});
   let html='';
   for(const [cap,label] of CAP_ORDER){
     const list=byCap[cap];if(!list||!list.length)continue;
     const ordered=orderByFlow(list),pos={};ordered.forEach((g,i)=>pos[g.name]=i);
-    html+=`<div class=capsec><div class=caph>${label}</div>`;
+    // ONE card per capability; the workflows flow inside it as a single tree,
+    // joined by their events (a hop) — so it reads as one process, not four.
+    html+=`<div class=capsec><div class=caph>${label}</div><div class=pipe>`;
     ordered.forEach((g,i)=>{
-      // event(s) that trigger this workflow, + where they come from
-      html+=g.consumes.map(ev=>{
-        const src=(emitMap[ev]||[]).filter(w=>w!==g.name);
-        const loop=src.some(w=>pos[w]!=null && pos[w]>=i);      // back-edge = loop
-        const from=src.length?('◀ '+src.join(', ')):(i===0?'trigger':'ext');
-        return `<div class="evband ${loop?'loop':''}">${i>0||src.length?'<div class=bar></div>':''}
-          <span class=ev>${ev} <span class=tag>${from}${loop?' ↺':''}</span></span><div class=bar></div></div>`;
-      }).join('');
+      const inEv=g.consumes[0]||'';
+      const src=(emitMap[inEv]||[]).filter(w=>w!==g.name);
+      if(i===0 && !src.length){
+        html+=`<div class="hop trig"><span class=ev>▼ ${inEv} · trigger</span><div class=bar></div></div>`;
+      }else{
+        const loop=src.some(w=>pos[w]!=null && pos[w]>=i);       // back-edge = loop
+        html+=`<div class="hop ${loop?'loop':''}"><div class=bar></div>
+          <span class=ev>${inEv}${loop?' ↺':''}</span><div class=bar></div></div>`;
+      }
       const max=Math.max(1,...g.steps.map(s=>s.ran));
       const by={};g.steps.forEach(s=>by[s.name]=s);
       const root=g.steps.length?g.steps[0].name:null;
-      const outs=g.emits.map(e=>{const c=(consMap[e]||[]).filter(w=>w!==g.name);
-        return `<b>${e}</b>${c.length?' ▶ '+c.join(', '):''}`;});
-      html+=`<div class=wf><h3>${g.name}</h3>
-        <div class=tree>${root?renderTree(g,root,by,new Set(),max):''}</div>
-        ${outs.length?`<div class=emits>emits ${outs.join(' · ')}</div>`:''}</div>`;
+      const cross=g.emits.map(e=>{const c=(consMap[e]||[]).filter(w=>capOf[w]!==cap);
+        return c.length?`<b>${e}</b> ⇢ ${c.join(', ')}`:null;}).filter(Boolean);
+      html+=`<div class=seg><span class=seglabel>▸ <b>${g.name}</b></span>
+        ${root?renderTree(g,root,by,new Set(),max):''}
+        ${cross.length?`<div class=crossnote>also emits ${cross.join(' · ')}</div>`:''}</div>`;
     });
-    html+='</div>';
+    html+='</div></div>';
   }
   workflows.innerHTML=html;
 }

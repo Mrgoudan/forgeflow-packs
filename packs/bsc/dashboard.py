@@ -126,11 +126,11 @@ def snapshot(conn):
         " sum(leased_by_task IS NOT NULL) leased,"
         " sum(cooldown_until_round IS NOT NULL) cooling FROM regions").fetchone()
     rnd = conn.execute("SELECT cursor FROM watermarks WHERE scope='hunt.round'").fetchone()
-    top_methods = [dict(id=r["id"], trials=r["trials"], yield_=r["verified_yield"])
+    top_methods = [dict(id=r["id"], trials=r["trials"], yield_=r["verified_yield"],
+                        status=r["status"])
                    for r in conn.execute(
-                       "SELECT id, trials, verified_yield FROM methods"
-                       " WHERE status='active' ORDER BY verified_yield DESC,"
-                       " trials DESC LIMIT 6")]
+                       "SELECT id, status, trials, verified_yield FROM methods"
+                       " ORDER BY verified_yield DESC, trials DESC, status, id LIMIT 8")]
     prs = conn.execute("SELECT count(*) FROM findings WHERE pr_number IS NOT NULL").fetchone()[0]
     active = [dict(id=r["id"], kind=r["kind"], state=r["state"], attempts=r["attempts"],
                    step=r["step"], age=r["age"])
@@ -486,6 +486,13 @@ padding:14px 16px;margin-bottom:16px;overflow-x:auto}
 .hop .ev{background:#0d2a4d;border:1px solid #1f6feb;border-radius:12px;padding:1px 11px;color:#79c0ff;font-size:11px;white-space:nowrap}
 .hop.trig .ev{background:#161b22;border-color:var(--line);color:var(--dim)}
 .hop.loop .ev{background:#3d2c00;border-color:var(--warn);color:var(--warn)}
+/* concurrent spawns sit in the SAME ROW as the looping node, to its right */
+.parallelrow{display:flex;align-items:flex-start;gap:0}
+.spawncol{display:flex;flex-direction:column;gap:14px;padding-top:14px}
+.spawn{display:flex;align-items:flex-start}
+.harrow{display:flex;align-items:center;color:#79c0ff;font-size:10px;white-space:nowrap;padding-top:16px}
+.harrow::before{content:'';width:16px;height:1px;background:#1f6feb;margin-right:4px}
+.harrow::after{content:'▶';color:#1f6feb;margin-left:2px}
 .block{background:#0d1117;border:1px solid var(--line);border-radius:7px;padding:8px 10px;
 cursor:pointer;transition:transform .08s;position:relative;overflow:hidden}
 .block:hover{transform:translateY(-2px);border-color:var(--accent)}
@@ -583,7 +590,7 @@ function renderStats(s){
      <div class=row><span class=k>leased</span><span>${s.regions.leased}</span></div>
      <div class=row><span class=k>cooling</span><span>${s.regions.cooling}</span></div></div>
    <div class=card><h2>Method hit-rate <span class=tag>confirmed / dispatched · bandit signal, not the bug count</span></h2>
-     ${(s.top_methods||[]).map(m=>`<div class=row><span class=k>${m.id}</span><span>${m.yield_}/${m.trials}</span></div>`).join('')||kv({})}</div>
+     ${(s.top_methods||[]).map(m=>`<div class=row><span class=k>${m.id}${m.status==='exhausted'?' <span class=tag>exhausted</span>':''}</span><span>${m.yield_}/${m.trials}</span></div>`).join('')||kv({})}</div>
    <div class=card><h2>Recent events</h2>
      ${(s.events||[]).map(e=>`<div class=row><span class=k>${e.name}</span><span class=tag>${(e.at||'').slice(11,19)}</span></div>`).join('')||kv({})}</div>`;
 }
@@ -666,15 +673,22 @@ function wfNode(name,byName,cap,consMap,capOf,names,seen){
     else if(seen.has(t)) loops.push(e+'→'+t+' ↺');
     else { seen.add(t); kids.push([e,t]); }
   }));
-  let cont='';
-  if(kids.length===1){const [e,t]=kids[0];
-    cont=`<div class=hop><div class=bar></div><span class=ev>${e}</span><div class=bar></div></div>`
-        +wfNode(t,byName,cap,consMap,capOf,names,seen);
-  }else if(kids.length>1){
-    cont=`<div class=fork></div><div class=branches>`+kids.map(([e,t])=>
-      `<div class=branch><span class=edge>${e} ↓</span>${wfNode(t,byName,cap,consMap,capOf,names,seen)}</div>`).join('')+`</div>`;
+  const seg=wfSeg(g,cap,consMap,capOf,loops);
+  const sub=(t)=>wfNode(t,byName,cap,consMap,capOf,names,seen);
+  if(!kids.length) return `<div class=treecol>${seg}</div>`;
+  // a LOOPING node keeps running while its spawns run -> put the spawns in the
+  // SAME ROW to its right (concurrent), not below it (which reads as sequential).
+  if(loops.length){
+    const spawns=kids.map(([e,t])=>
+      `<div class=spawn><span class=harrow>${e}</span>${sub(t)}</div>`).join('');
+    return `<div class=parallelrow><div class=treecol>${seg}</div><div class=spawncol>${spawns}</div></div>`;
   }
-  return `<div class=treecol>${wfSeg(g,cap,consMap,capOf,loops)}${cont}</div>`;
+  if(kids.length===1){const [e,t]=kids[0];
+    return `<div class=treecol>${seg}<div class=hop><div class=bar></div><span class=ev>${e}</span><div class=bar></div></div>${sub(t)}</div>`;
+  }
+  const br=kids.map(([e,t])=>
+    `<div class=branch><span class=edge>${e} ↓</span>${sub(t)}</div>`).join('');
+  return `<div class=treecol>${seg}<div class=fork></div><div class=branches>${br}</div></div>`;
 }
 function renderWorkflows(gs){
   const emitMap={},consMap={},capOf={},byName={};

@@ -14,7 +14,10 @@ reproduces the run. These blocks are those rules:
 - hunt.merge_explore apply an explorer's VERIFIED result: file finding+pattern,
                      credit the dispatched arm's yield, update dry_streak/
                      cooldown, enqueue the replacement explorer (auto-swap) +
-                     an exploiter on a confirm.
+                     an exploiter on a confirm. Retires a spent arm and, at
+                     campaign saturation, kicks the Oracle-Scout.
+- hunt.merge_scout   apply the Oracle-Scout's proposals: insert new methods
+                     (arsenal growth) and reopen the hunt, or end it.
 
 Rounds are a logical clock in watermarks('hunt.round'); merge ticks it.
 Explore vs exploit balance is emergent (every confirm spawns one exploiter;
@@ -36,6 +39,8 @@ _SRC_GLOBS = ("*.cpp", "*.c", "*.h", "*.cbs")
 
 COOLDOWN_C = 3          # rounds a region cools after dry_streak hits the limit
 DRY_LIMIT = 3           # consecutive dry explores -> cooldown
+TRIAL_BUDGET = 8        # pulls a method gets before a zero-yield arm is retired
+MAX_SCOUT_ROUNDS = 3    # scout invocations per campaign (runaway backstop)
 _SUMMARY_CAP = 400      # reading summary (prompt digest) length
 _FACTS_CAP = 8000       # reading facts (full note) length
 
@@ -272,6 +277,13 @@ def hunt_merge_explore(ctx, task, prev):
                 (DRY_LIMIT, rnd + COOLDOWN_C, region))
         outcome = "dry"
 
+    # retire a spent arm: TRIAL_BUDGET pulls with zero yield -> exhausted, so
+    # the bandit stops rotating it (prunes scouted duds AND dead seeded arms).
+    if method:
+        conn.execute(
+            "UPDATE methods SET status='exhausted' WHERE id=? AND status='active'"
+            " AND verified_yield=0 AND trials>=?", (method, TRIAL_BUDGET))
+
     # auto-swap: hand off to the next region unless the campaign is saturated
     nxt = conn.execute(
         "SELECT id FROM regions WHERE leased_by_task IS NULL"
@@ -283,7 +295,11 @@ def hunt_merge_explore(ctx, task, prev):
         result = {"round": rnd, "region": region, "reading_written": reading_written,
                   "_staged": staged + emits}
         return outcome, result
-    # campaign saturated: nothing to hand off
+    # campaign saturated with the current arsenal: kick the Oracle-Scout to
+    # invent new methods (it either reopens the hunt or ends it). Keyed by
+    # round so concurrent saturators dedup but a later saturation re-scouts.
+    emits.append({"op": "emit_event", "name": "hunt.scout_requested",
+                  "payload": {"round": rnd}})
     return "done", {"round": rnd, "region": region, "reading_written": reading_written,
                     "_staged": staged + emits, "campaign": "saturated"}
 
@@ -333,6 +349,72 @@ def _hunt_method(env, task, spec):
                            (m,)).fetchone()
     return {"method": m, "how": row["description"] if row else "",
             "note": "Generate this round's candidate using the '%s' method." % m}
+
+
+@context_provider("hunt_arsenal")
+def _hunt_arsenal(env, task, spec):
+    """What the Oracle-Scout reasons over: the ACTIVE bench (still rotating),
+    the EXHAUSTED arms (don't re-propose these), and a sample of CONFIRMED
+    findings (the mechanisms to generalize into new methods)."""
+    conn = env.conn
+    active = [{"id": r["id"], "how": r["description"]} for r in conn.execute(
+        "SELECT id, description FROM methods WHERE status='active' ORDER BY id")]
+    exhausted = [r["id"] for r in conn.execute(
+        "SELECT id FROM methods WHERE status='exhausted' ORDER BY id")]
+    findings = [{"title": r["title"], "pattern": None} for r in conn.execute(
+        "SELECT title FROM findings WHERE source='bughunt'"
+        " ORDER BY id DESC LIMIT 20")]
+    return {"active": active, "exhausted": exhausted, "confirmed_findings": findings,
+            "note": "Invent methods NOT in active or exhausted. Generalize a "
+                    "confirmed finding's mechanism, or target a pattern class "
+                    "no active method provokes."}
+
+
+@block("hunt.merge_scout", "state", {"proposed", "saturated"},
+       required_params={"repo"})
+def hunt_merge_scout(ctx, task, prev):
+    """Apply the Oracle-Scout's proposals. PROPOSED with >=1 genuinely new
+    method reopens the hunt: insert the new arms 'active' (trials=0 -> the
+    bandit pulls them FIRST, which IS their trial; TRIAL_BUDGET zero-yield
+    pulls later retires them), clear region cooldowns so the fresh tactics
+    get a full surface, and emit explore_requested. NO_NEW_METHOD (or a
+    proposal of only-already-known ids, or the scout-round cap) ends the
+    campaign. INSERT OR IGNORE never revives an exhausted id."""
+    conn = ctx["_conn"]
+    res = prev or {}
+    rnd = _round(conn)
+    scouted = _bump(conn, "hunt.scout_rounds")
+    added = 0
+    if res.get("verdict") == "PROPOSED" and scouted <= MAX_SCOUT_ROUNDS:
+        have = {r["id"] for r in conn.execute("SELECT id FROM methods")}
+        for m in res.get("methods") or []:
+            mid = (m.get("id") or "").strip()
+            if not mid or mid in have:
+                continue
+            conn.execute(
+                "INSERT OR IGNORE INTO methods(id, description, status)"
+                " VALUES (?,?, 'active')", (mid, (m.get("description") or "")[:400]))
+            have.add(mid)
+            added += 1
+    if not added:
+        return "saturated", {"scout_round": scouted, "added": 0}
+    # reopen: a new tactic makes cooled regions worth revisiting
+    conn.execute("UPDATE regions SET dry_streak=0, cooldown_until_round=NULL")
+    return "proposed", {"scout_round": scouted, "added": added,
+                        "_staged": [{"op": "emit_event",
+                                     "name": "hunt.explore_requested",
+                                     "payload": {"round": rnd}}]}
+
+
+def _bump(conn, scope):
+    """Increment and return a watermark counter (a logical round/limit clock)."""
+    n = 1
+    r = conn.execute("SELECT cursor FROM watermarks WHERE scope=?", (scope,)).fetchone()
+    if r:
+        n = int(r["cursor"]) + 1
+    conn.execute("INSERT INTO watermarks(scope, cursor) VALUES (?,?)"
+                 " ON CONFLICT(scope) DO UPDATE SET cursor=?", (scope, str(n), str(n)))
+    return n
 
 
 @block("hunt.verify_candidate", "local",

@@ -31,11 +31,13 @@ prompts:
   refute: prompts/refute.md
   explore: prompts/explorer.md
   exploit: prompts/exploiter.md
+  scout:  prompts/scout.md
 schemas:
   review_findings:  ../review/schemas/review_findings.yaml
   refute_decisions: ../review/schemas/refute_decisions.yaml
   explore_result:   ../hunt/schemas/explore_result.yaml
   exploit_result:   ../hunt/schemas/exploit_result.yaml
+  scout_result:     ../hunt/schemas/scout_result.yaml
 
 agents:
   # GLM behind the agentic claude CLI (so bsc-* skills + worktree work).
@@ -48,6 +50,8 @@ agents:
   explore: { backend: claude-cli, model: GLM-5.2,
              env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
   exploit: { backend: claude-cli, model: GLM-5.2,
+             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  scout:   { backend: claude-cli, model: GLM-5.2,
              env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:

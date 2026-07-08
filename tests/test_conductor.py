@@ -153,6 +153,42 @@ class ConductorTest(unittest.TestCase):
             "SELECT json_extract(payload,'$.method') FROM tasks WHERE id=1"
         ).fetchone()[0], "m1")
 
+    def _scout(self, prev):
+        with tx(self.conn):
+            return get("hunt.merge_scout").fn(_ctx(self.conn, repo="r"),
+                                              _task(self.conn, 1), prev)
+
+    def test_scout_proposes_new_methods_and_reopens(self):
+        # cool a region so we can see the reopen clear it
+        self.conn.execute("UPDATE regions SET dry_streak=2, cooldown_until_round=99"
+                          " WHERE id='a'")
+        o, r = self._scout({"verdict": "PROPOSED", "methods": [
+            {"id": "new-lens", "description": "a fresh tactic"},
+            {"id": "m1", "description": "dup — already on the bench"}]})
+        self.assertEqual((o, r["added"]), ("proposed", 1))       # dup skipped
+        self.assertEqual(self.conn.execute(
+            "SELECT status FROM methods WHERE id='new-lens'").fetchone()[0], "active")
+        # region cooldowns cleared -> the new tactic gets a full surface
+        row = self.conn.execute("SELECT dry_streak, cooldown_until_round"
+                                " FROM regions WHERE id='a'").fetchone()
+        self.assertEqual((row[0], row[1]), (0, None))
+        self.assertIn("hunt.explore_requested",
+                      [s["name"] for s in r["_staged"]])
+
+    def test_scout_no_new_method_ends_campaign(self):
+        o, r = self._scout({"verdict": "NO_NEW_METHOD"})
+        self.assertEqual((o, r["added"]), ("saturated", 0))
+        self.assertNotIn("_staged", r)                          # nothing reopened
+
+    def test_spent_arm_retired_after_trial_budget(self):
+        _o, r = self._pick(1)                                   # dispatch m1
+        m = r["method"]
+        self.conn.execute("UPDATE methods SET trials=8 WHERE id=?",
+                          (m,))                                  # simulate a spent budget
+        self._merge(1, {"confirmed": False})                    # dry -> retire it
+        self.assertEqual(self.conn.execute(
+            "SELECT status FROM methods WHERE id=?", (m,)).fetchone()[0], "exhausted")
+
     def test_method_provider_reads_dispatched_arm(self):
         # the provider surfaces the arm dispatch recorded, it does NOT re-pick
         from forgeflow.contract import CONTEXT_PROVIDERS
@@ -182,6 +218,7 @@ def _hunt_pack(base, explorer_cli):
     pack = base / "pack"; pack.mkdir()
     bsc = PACKS / "packs" / "bsc"; rev = PACKS / "packs" / "review"
     hunt = PACKS / "packs" / "hunt"
+    sc = PACKS / "tests" / "fixtures" / "fake_scout.py"
     (pack / "project.yaml").write_text("""\
 name: bsc
 paths: {{ repo: {base}, code_notes: {base}/notes }}
@@ -199,16 +236,19 @@ prompts:
   refute: {bsc}/prompts/refute.md
   explore: {bsc}/prompts/explorer.md
   exploit: {bsc}/prompts/exploiter.md
+  scout:  {bsc}/prompts/scout.md
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
   explore_result:   {hunt}/schemas/explore_result.yaml
   exploit_result:   {hunt}/schemas/exploit_result.yaml
+  scout_result:     {hunt}/schemas/scout_result.yaml
 agents:
   review:  {{ backend: claude-cli, cli: {fa} }}
   refute:  {{ backend: claude-cli, cli: {fa} }}
   explore: {{ backend: claude-cli, cli: {ex} }}
   exploit: {{ backend: claude-cli, cli: {fa} }}
+  scout:   {{ backend: claude-cli, cli: {sc} }}
 params:
   manual_path: m.md
   semantics_prefixes: [x]
@@ -229,7 +269,7 @@ params:
   hunt_regions: [ra, rb]
   hunt_methods: [{{ id: invariant-probe, description: p }}]
 """.format(base=base, bsc=bsc, rev=rev, hunt=hunt, fa=FAKE_AGENT,
-           ex=explorer_cli, clang=fake_clang))
+           ex=explorer_cli, sc=sc, clang=fake_clang))
     return pack
 
 

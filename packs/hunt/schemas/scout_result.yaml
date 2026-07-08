@@ -1,0 +1,19 @@
+# Oracle-Scout output (HUNT.md): invent NEW detection METHODS — bug-
+# generation tactics — when the current arsenal has saturated. Each proposal
+# generalizes a confirmed bug's mechanism or targets a defect class the
+# bench can't provoke. PROPOSED with >=1 method reopens the campaign;
+# NO_NEW_METHOD ends it.
+type: object
+required: [verdict]
+properties:
+  verdict: { enum: [PROPOSED, NO_NEW_METHOD] }
+  methods:
+    type: array
+    items:
+      type: object
+      required: [id, description]
+      properties:
+        id:          { type: string }   # kebab-case, unique, not already on the bench
+        description: { type: string }   # the generation tactic (how to make a candidate)
+        target:      { type: string }   # defect class it aims at (optional)
+        rationale:   { type: string }   # the gap it fills — which finding/pattern (optional)

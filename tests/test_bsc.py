@@ -121,16 +121,19 @@ prompts:
   refute: {bsc}/prompts/refute.md
   explore: {bsc}/prompts/explorer.md
   exploit: {bsc}/prompts/exploiter.md
+  scout:  {bsc}/prompts/scout.md
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
   explore_result:   {hunt}/schemas/explore_result.yaml
   exploit_result:   {hunt}/schemas/exploit_result.yaml
+  scout_result:     {hunt}/schemas/scout_result.yaml
 agents:
   review:  {{ backend: claude-cli, cli: {cli} }}
   refute:  {{ backend: claude-cli, cli: {cli} }}
   explore: {{ backend: claude-cli, cli: {cli} }}
   exploit: {{ backend: claude-cli, cli: {cli} }}
+  scout:   {{ backend: claude-cli, cli: {cli} }}
 params:
   manual_path: {manual}
   manual_pinned_sha: {pinned}

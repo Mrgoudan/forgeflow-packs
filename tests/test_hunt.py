@@ -6,8 +6,8 @@ from helpers import PACKS, tmpdir
 
 from forgeflow.blocks import load_files, run_isolated
 
-# register the generic hunt block via the engine loader (idempotent)
-load_files([str(PACKS / "packs" / "review" / "blocks" / "hunt.py")])
+# register the differential-probe oracle via the engine loader (idempotent)
+load_files([str(PACKS / "packs" / "hunt" / "blocks" / "probe.py")])
 
 
 class ProbeSweepTest(unittest.TestCase):

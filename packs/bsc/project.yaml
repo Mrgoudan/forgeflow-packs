@@ -10,15 +10,20 @@ paths:
 tools:
   git: { path: git, version_cmd: ["--version"] }
 
+# This pack is the BSC INVOCATION: it composes two GENERIC packs — ../review
+# (PR-review + adjudication) and ../hunt (the differential-probe oracle +
+# the Conductor: region leasing / method bandit / cooldown / auto-swap) —
+# and wires them to BSC's repo, probes, prompts, and knowledge vault. The
+# hunt/review packs name nothing BSC-specific; everything BSC lives here.
 workflows: [workflows]
 blocks:
   - ../review/blocks/reviewblocks.py
   - ../review/blocks/forge.py
   - ../review/blocks/providers.py
-  - ../review/blocks/hunt.py
-  - blocks/bsc.py
-  - blocks/ingest.py
-  - blocks/conductor.py
+  - ../hunt/blocks/probe.py         # differential-probe oracle (evidence gate + no-AI finder)
+  - ../hunt/blocks/conductor.py     # generic campaign brain (dispatch/bandit/leasing)
+  - blocks/bsc.py                   # BSC: manual-wins gate, base clang, ensure_base
+  - blocks/ingest.py                # BSC: code_notes -> readings
 
 prompts:
   review: prompts/review.md
@@ -28,8 +33,8 @@ prompts:
 schemas:
   review_findings:  ../review/schemas/review_findings.yaml
   refute_decisions: ../review/schemas/refute_decisions.yaml
-  explore_result:   schemas/explore_result.yaml
-  exploit_result:   schemas/exploit_result.yaml
+  explore_result:   ../hunt/schemas/explore_result.yaml
+  exploit_result:   ../hunt/schemas/exploit_result.yaml
 
 agents:
   # GLM behind the agentic claude CLI (so bsc-* skills + worktree work).

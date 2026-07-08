@@ -8,7 +8,7 @@ from forgeflow import db
 from forgeflow.blocks import load_files, get
 from forgeflow.util import tx
 
-load_files([str(PACKS / "packs" / "bsc" / "blocks" / "conductor.py")])
+load_files([str(PACKS / "packs" / "hunt" / "blocks" / "conductor.py")])
 
 REGIONS = [{"id": "a"}, {"id": "b"}, {"id": "c"}]  # seed via list of ids below
 METHODS = [{"id": "m1", "description": "d1"}, {"id": "m2", "description": "d2"}]
@@ -152,6 +152,7 @@ def _hunt_pack(base, explorer_cli):
     fake_clang.write_text("#!/bin/sh\nexit 0\n"); fake_clang.chmod(0o755)
     pack = base / "pack"; pack.mkdir()
     bsc = PACKS / "packs" / "bsc"; rev = PACKS / "packs" / "review"
+    hunt = PACKS / "packs" / "hunt"
     (pack / "project.yaml").write_text("""\
 name: bsc
 paths: {{ repo: {base}, code_notes: {base}/notes }}
@@ -161,9 +162,9 @@ blocks:
   - {rev}/blocks/reviewblocks.py
   - {rev}/blocks/forge.py
   - {rev}/blocks/providers.py
-  - {rev}/blocks/hunt.py
+  - {hunt}/blocks/probe.py
   - {bsc}/blocks/bsc.py
-  - {bsc}/blocks/conductor.py
+  - {hunt}/blocks/conductor.py
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md
@@ -172,8 +173,8 @@ prompts:
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
-  explore_result:   {bsc}/schemas/explore_result.yaml
-  exploit_result:   {bsc}/schemas/exploit_result.yaml
+  explore_result:   {hunt}/schemas/explore_result.yaml
+  exploit_result:   {hunt}/schemas/exploit_result.yaml
 agents:
   review:  {{ backend: claude-cli, cli: {fa} }}
   refute:  {{ backend: claude-cli, cli: {fa} }}
@@ -198,8 +199,8 @@ params:
   probe_include: {base}/probes
   hunt_regions: [ra, rb]
   hunt_methods: [{{ id: invariant-probe, description: p }}]
-""".format(base=base, bsc=bsc, rev=rev, fa=FAKE_AGENT, ex=explorer_cli,
-           clang=fake_clang))
+""".format(base=base, bsc=bsc, rev=rev, hunt=hunt, fa=FAKE_AGENT,
+           ex=explorer_cli, clang=fake_clang))
     return pack
 
 

@@ -18,12 +18,16 @@ every return spawns one replacement explorer) — not a knob.
 """
 from __future__ import annotations
 
+import glob
 import json
 import math
+import os
 from pathlib import Path
 
 from forgeflow.blocks import block
 from forgeflow.util import template
+
+_SRC_GLOBS = ("*.cpp", "*.c", "*.h", "*.cbs")
 
 COOLDOWN_C = 3          # rounds a region cools after dry_streak hits the limit
 DRY_LIMIT = 3           # consecutive dry explores -> cooldown
@@ -44,13 +48,27 @@ def _tick_round(conn):
 @block("hunt.seed", "state", {"ok"},
        accepts_context={"pack"}, required_params={"repo"})
 def hunt_seed(ctx, task, prev):
-    """Seed the regions surface and the methods bench from pack config.
-    Idempotent — INSERT OR IGNORE, so re-running never disturbs live state."""
+    """Seed the region surface (FILE-level, not folder-level) and the methods
+    bench from pack config. Each configured entry is a repo dir that is
+    expanded to one region per source FILE — a file's ~dozens of functions is
+    a unit the explorer can actually work through and the dry-streak/cooldown
+    can meaningfully exhaust. An entry that isn't an existing dir is seeded
+    literally (tests / explicit regions). Idempotent (INSERT OR IGNORE)."""
     conn = ctx["_conn"]
     repo = template(ctx["repo"], {})
-    for rid in ctx.get("regions") or []:
-        conn.execute("INSERT OR IGNORE INTO regions(id, repo) VALUES (?,?)",
-                     (rid, repo))
+    for entry in ctx.get("regions") or []:
+        d = os.path.join(repo, entry)
+        files = []
+        if os.path.isdir(d):
+            for pat in _SRC_GLOBS:
+                files += glob.glob(os.path.join(d, "**", pat), recursive=True)
+        if files:
+            for f in sorted(os.path.relpath(f, repo) for f in files):
+                conn.execute("INSERT OR IGNORE INTO regions(id, repo) VALUES (?,?)",
+                             (f, repo))
+        else:
+            conn.execute("INSERT OR IGNORE INTO regions(id, repo) VALUES (?,?)",
+                         (entry, repo))
     for m in ctx.get("methods") or []:
         conn.execute("INSERT OR IGNORE INTO methods(id, description, status)"
                      " VALUES (?,?, 'active')", (m["id"], m.get("description", "")))

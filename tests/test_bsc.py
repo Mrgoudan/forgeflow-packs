@@ -113,9 +113,9 @@ blocks:
   - {rev}/blocks/reviewblocks.py
   - {rev}/blocks/forge.py
   - {rev}/blocks/providers.py
-  - {rev}/blocks/hunt.py
+  - {hunt}/blocks/probe.py
   - {bsc}/blocks/bsc.py
-  - {bsc}/blocks/conductor.py
+  - {hunt}/blocks/conductor.py
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md
@@ -124,8 +124,8 @@ prompts:
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
-  explore_result:   {bsc}/schemas/explore_result.yaml
-  exploit_result:   {bsc}/schemas/exploit_result.yaml
+  explore_result:   {hunt}/schemas/explore_result.yaml
+  exploit_result:   {hunt}/schemas/exploit_result.yaml
 agents:
   review:  {{ backend: claude-cli, cli: {cli} }}
   refute:  {{ backend: claude-cli, cli: {cli} }}
@@ -152,7 +152,8 @@ params:
   hunt_regions: [clang/lib/Sema/BSC]
   hunt_methods: [{{ id: invariant-probe, description: probe }}]
 """.format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
-           rev=(PACKS / "packs" / "review"), cli=cli, manual=MANUAL, pinned=pinned))
+           rev=(PACKS / "packs" / "review"), hunt=(PACKS / "packs" / "hunt"),
+           cli=cli, manual=MANUAL, pinned=pinned))
     return pack
 
 

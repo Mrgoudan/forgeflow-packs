@@ -8,6 +8,7 @@
 #   ./run-bsc.sh validate
 #   ./run-bsc.sh emit forge.poll_requested --data '{}' --drive
 #   ./run-bsc.sh run
+#   ./run-bsc.sh dash [--port 8787]   # control room: stats + queue + block maps
 set -euo pipefail
 
 PACK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -34,6 +35,13 @@ export PYTHONPATH="$ENGINE${PYTHONPATH:+:$PYTHONPATH}"
 # the agent and forge calls go direct. (Override by exporting NO_PROXY_UNSET=1.)
 if [ -z "${NO_PROXY_UNSET:-}" ]; then
   unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+fi
+
+# the control room is the daemon + a web UI (stats/queue/block maps/controls);
+# it runs agent tasks itself, so it needs the same sourced env as `run`.
+if [ "${1:-}" = "dash" ]; then
+  shift
+  exec python3 "$PACK_DIR/dashboard.py" --root "$FF_ROOT" --pack "$PACK_DIR" "$@"
 fi
 
 exec python3 -m forgeflow --root "$FF_ROOT" --pack "$PACK_DIR" "$@"

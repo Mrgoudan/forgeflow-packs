@@ -110,6 +110,30 @@ $EDITOR packs/config/secrets.env
 ./run-bsc.sh emit hunt.round_requested --data '{"base":"bishengc/15.0.4"}' --drive   # a hunt
 ```
 
+## Control room (live dashboard)
+
+```bash
+./run-bsc.sh dash            # → http://127.0.0.1:8787
+```
+
+A self-contained (stdlib-only) local web UI that **is** the daemon: a gated
+claim→execute loop runs behind it and obeys the controls you click.
+
+- **Stats** — tasks / findings / methods / regions / PRs / hunt round, live
+  (2 s poll).
+- **Controls** — per capability (bug hunt · review · fix): **▶ run** (emits
+  the trigger), **enable/disable** (gates that capability's tasks), plus a
+  global **⏸ pause all**.
+- **Queue** — every active task with its kind, state, current step, age.
+- **Workflow block-maps** — each workflow drawn as its blocks; hue = run
+  count (heat), a green pulse marks the block a task is **running right now**
+  (routed from the last `task_steps` outcome). **Click any block** for a
+  drawer: its outcomes, injected context, params, the **agent prompt**, the
+  output schema, and recent runs (outcome · ms · result).
+
+Same sourced env as `run` (so its agent tasks reach GLM). It replaces
+`run` — don't run both (one daemon per state root).
+
 `FORGE_WRITE=1` gates real posting / PR creation; without it, comments
 archive and fixes commit to a local branch only. After editing the manual,
 re-validate the skills and bump `manual_pinned_sha`

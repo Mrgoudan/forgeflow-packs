@@ -18,30 +18,27 @@ want (`run-bsc.sh emit <event>`); the engine routes it by each workflow's
 
 ## Why the vault is still here (it is NOT fully "ported")
 
-The `vault/bsc/` tree holds **three** kinds of thing, only some of which land
-in the db:
+After pruning, `vault/bsc/` holds **only what's used** — two kinds of thing,
+both needed:
 
 1. **Live-executed — never ported.** `probes/` (66 `.cbs` + their
    `.expected.*` oracles) are *run from disk* against clang on every probe
    sweep (review evidence gate + hunt no-AI finder). Delete them and the
    sweep has nothing to run.
-2. **Ported seed — a regenerable projection.** `findings.jsonl` and
-   `code_notes/` are re-read into the db at every campaign start by
-   `bsc.ingest_seed` / `bsc.ingest_notes` (idempotent). The **vault is the
-   git-tracked, editable source of truth; the db (`run/*.db`) is a
+2. **Source — a regenerable projection.** `findings.jsonl`, `code_notes/`,
+   and `knowledge/KNOWLEDGE.md` are read into the db (or injected) at every
+   campaign start (`bsc.ingest_seed`/`bsc.ingest_notes`/`bsc_compiler_guide`).
+   The **vault is the git-tracked source of truth; the db (`run/*.db`) is a
    disposable cache** you can wipe and rebuild. Delete the vault and the next
    campaign seeds *empty*.
-3. **Reference / archive — mostly wired to nothing.** The rest of the vault
-   is the original campaign's artifacts. Each has a *reason* it isn't ported:
 
-   | artifact | why it isn't ported |
-   |---|---|
-   | `knowledge/KNOWLEDGE.md` | **now IS wired** → `bsc_compiler_guide` provider (fixer + explorer): how to edit each compiler subsystem. |
-   | `knowledge/BiShengC_*Reference.md`, `*Semantic_Rules*.md`, `EBNF*.md` | language spec — would be a **competing ground truth** to the in-repo manual (the "manual wins" design forbids a second authority) and the `bsc-*` skills already cover it. |
-   | `knowledge/bishengc_rules.json` | structured rules with **no consumer** (no rule-engine block); wire only if a no-AI rule checker is built. |
-   | `knowledge/bishengc_training_dataset.jsonl` | **training data**, not runtime context — for fine-tuning, never injected. |
-   | `knowledge/TRIAGE.md` | a dated bug snapshot; its canonical form (`findings.jsonl`) is **already ported**. |
-   | `prompts/`, `claude/` | source prompts we already adapted into `prompts/`; the `bsc-*` skills load from the reviewed repo's `.claude`, not here. |
+The former archive (language references, `bishengc_rules.json`, the training
+dataset, `TRIAGE.md`, `prompts/`, `claude/`) was **removed** — each was wired
+to nothing: the language refs would be a *competing* ground truth to the
+in-repo manual, `rules.json` had no consumer, the dataset is training data
+(not runtime context), `TRIAGE.md`'s canonical form is `findings.jsonl`, and
+the prompts/agents were already adapted into `prompts/` or load from the
+repo's `.claude`. Recoverable from vault git history if ever wanted.
 
 > **Asymmetry to know:** runtime-GROWN knowledge (new findings from a hunt,
 > Oracle-Scout methods, explorer readings) lives ONLY in the db, not written

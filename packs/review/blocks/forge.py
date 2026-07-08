@@ -190,3 +190,78 @@ def publish_comment(ctx, task, prev):
                      (forge_id, egress_id))
     return "sent", {"egress_id": egress_id, "forge_id": forge_id,
                     "target": target}
+
+
+@block("forge.open_pr", "egress",
+       {"opened", "staged", "nothing", "forge_auth", "forge_server",
+        "error", "timeout"},
+       required_params={"repo", "pr_create_url", "base"})
+def forge_open_pr(ctx, task, prev):
+    """Commit the verified fix (already applied in the working tree by
+    fix.verify) onto the finding's fix branch and open a PR. Egress choke
+    point: without FORGE_WRITE=1 it commits the branch LOCALLY and returns
+    'staged' (never pushes/opens). On a real open it pushes the branch, POSTs
+    the PR, records pr_number, and moves the finding verifying -> pr_open."""
+    conn = ctx["_conn"]
+    repo = template(ctx["repo"], {})
+    key = (task.get("payload") or {}).get("finding")
+    r = conn.execute("SELECT id, title, state, branch FROM findings WHERE key=?",
+                     (key,)).fetchone()
+    if not r or r["state"] != "verifying" or not r["branch"]:
+        return "error", {"reason": "finding not in verifying/branch unset",
+                         "finding": key}
+    branch, base = r["branch"], template(ctx["base"], {})
+    sd = Path(ctx["_step_dir"])
+    tools = ctx.get("_tools")
+
+    def git(*args, name="git"):
+        return run_cmd(["git", "-C", repo, *args], ctx["_timeout_s"],
+                       sd / name, tools=tools)
+
+    git("checkout", "-B", branch, name="branch")
+    git("add", "-A", name="add")
+    title = "fix: %s" % (r["title"] or key)
+    body = "Automated fix for finding `%s`.\n\nProduced by forgeflow." % key
+    code, _o, _e = git("commit", "-m", title, "-m", body, name="commit")
+    if code != 0:                                   # nothing staged to commit
+        return "nothing", {"finding": key, "reason": "empty commit"}
+
+    if os.environ.get("FORGE_WRITE") != "1":
+        return "staged", {"finding": key, "branch": branch,
+                          "note": "committed locally; set FORGE_WRITE=1 to push+PR"}
+
+    pcode, _o, pe = git("push", "-u", "origin", branch, "--force-with-lease",
+                        name="push")
+    if pcode != 0:
+        return "forge_server", {"detail": "push failed", "stderr_path": pe}
+
+    url = _tpl(ctx["pr_create_url"], ctx, task, prev)
+    headers = {"Content-Type": "application/json"}
+    auth = ctx.get("auth")
+    if auth and auth.get("token_ref"):
+        token = load_secrets().get("FORGE_TOKEN_%s" % auth["token_ref"])
+        if not token:
+            return "forge_auth", {"detail": "FORGE_TOKEN_%s missing" % auth["token_ref"]}
+        if auth.get("style") == "query":
+            sep = "&" if "?" in url else "?"
+            url = "%s%s%s=%s" % (url, sep, auth.get("name", "access_token"), token)
+        else:
+            headers[auth.get("name", "PRIVATE-TOKEN")] = token
+    payload = {"title": title, "head": branch, "base": base, "body": body}
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"),
+                                 headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=ctx["_timeout_s"]) as resp:
+            pr = json.loads(resp.read().decode("utf-8") or "{}")
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return "forge_auth", {"status": e.code}
+        return "forge_server", {"status": e.code}
+    except OSError as e:
+        return "forge_server", {"detail": str(e)}
+    number = pr.get("number") or pr.get("iid") or pr.get("id")
+    conn.execute("UPDATE findings SET pr_number=? WHERE id=?", (number, r["id"]))
+    return "opened", {"finding": key, "branch": branch, "pr_number": number,
+                      "_staged": [{"op": "transition", "finding_id": r["id"],
+                                   "to_state": "pr_open", "event": "fix:pr_opened",
+                                   "evidence": {"pr_number": number, "branch": branch}}]}

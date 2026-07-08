@@ -237,6 +237,7 @@ def _hunt_pack(base, explorer_cli):
     pack = base / "pack"; pack.mkdir()
     bsc = PACKS / "packs" / "bsc"; rev = PACKS / "packs" / "review"
     hunt = PACKS / "packs" / "hunt"
+    fix = PACKS / "packs" / "fix"
     sc = PACKS / "tests" / "fixtures" / "fake_scout.py"
     (pack / "project.yaml").write_text("""\
 name: bsc
@@ -251,24 +252,28 @@ blocks:
   - {bsc}/blocks/bsc.py
   - {bsc}/blocks/seed.py
   - {hunt}/blocks/conductor.py
+  - {fix}/blocks/fix.py
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md
   explore: {bsc}/prompts/explorer.md
   exploit: {bsc}/prompts/exploiter.md
   scout:  {bsc}/prompts/scout.md
+  fix:    {bsc}/prompts/fixer.md
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
   explore_result:   {hunt}/schemas/explore_result.yaml
   exploit_result:   {hunt}/schemas/exploit_result.yaml
   scout_result:     {hunt}/schemas/scout_result.yaml
+  fix_patch:        {fix}/schemas/fix_patch.yaml
 agents:
   review:  {{ backend: claude-cli, cli: {fa} }}
   refute:  {{ backend: claude-cli, cli: {fa} }}
   explore: {{ backend: claude-cli, cli: {ex} }}
   exploit: {{ backend: claude-cli, cli: {fa} }}
   scout:   {{ backend: claude-cli, cli: {sc} }}
+  fix:     {{ backend: claude-cli, cli: {fa} }}
 params:
   manual_path: m.md
   semantics_prefixes: [x]
@@ -290,7 +295,10 @@ params:
   hunt_regions: [ra, rb]
   hunt_region_grep: ""
   hunt_region_scan: []
-""".format(base=base, bsc=bsc, rev=rev, hunt=hunt, fa=FAKE_AGENT,
+  fix_branch_prefix: "forgeflow/fix-"
+  fix_build_cmd: ["true"]
+  pr_create_url: "http://x/pulls"
+""".format(base=base, bsc=bsc, rev=rev, hunt=hunt, fix=fix, fa=FAKE_AGENT,
            ex=explorer_cli, sc=sc, clang=fake_clang))
     return pack
 

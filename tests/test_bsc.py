@@ -117,24 +117,28 @@ blocks:
   - {bsc}/blocks/bsc.py
   - {bsc}/blocks/seed.py
   - {hunt}/blocks/conductor.py
+  - {fix}/blocks/fix.py
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md
   explore: {bsc}/prompts/explorer.md
   exploit: {bsc}/prompts/exploiter.md
   scout:  {bsc}/prompts/scout.md
+  fix:    {bsc}/prompts/fixer.md
 schemas:
   review_findings:  {rev}/schemas/review_findings.yaml
   refute_decisions: {rev}/schemas/refute_decisions.yaml
   explore_result:   {hunt}/schemas/explore_result.yaml
   exploit_result:   {hunt}/schemas/exploit_result.yaml
   scout_result:     {hunt}/schemas/scout_result.yaml
+  fix_patch:        {fix}/schemas/fix_patch.yaml
 agents:
   review:  {{ backend: claude-cli, cli: {cli} }}
   refute:  {{ backend: claude-cli, cli: {cli} }}
   explore: {{ backend: claude-cli, cli: {cli} }}
   exploit: {{ backend: claude-cli, cli: {cli} }}
   scout:   {{ backend: claude-cli, cli: {cli} }}
+  fix:     {{ backend: claude-cli, cli: {cli} }}
 params:
   manual_path: {manual}
   manual_pinned_sha: {pinned}
@@ -157,9 +161,12 @@ params:
   hunt_regions: [clang/lib/Sema/BSC]
   hunt_region_grep: ""
   hunt_region_scan: []
+  fix_branch_prefix: "forgeflow/fix-"
+  fix_build_cmd: ["true"]
+  pr_create_url: "http://unused/pulls"
 """.format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
            rev=(PACKS / "packs" / "review"), hunt=(PACKS / "packs" / "hunt"),
-           cli=cli, manual=MANUAL, pinned=pinned))
+           fix=(PACKS / "packs" / "fix"), cli=cli, manual=MANUAL, pinned=pinned))
     return pack
 
 

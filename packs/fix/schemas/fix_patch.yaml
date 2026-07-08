@@ -1,0 +1,11 @@
+# Fixer output: a minimal patch for ONE finding plus the repro the oracle
+# re-runs to confirm the fix. PATCHED routes to verify; NO_FIX abandons.
+type: object
+required: [verdict]
+properties:
+  verdict: { enum: [PATCHED, NO_FIX] }
+  patch:   { type: string }          # a unified diff (git apply), minimal
+  probe:   { type: string }          # the .cbs repro that must now behave correctly
+  expect_error: { type: boolean }    # SHOULD the compiler reject the repro?
+  summary: { type: string }          # one line: root cause + what the patch does
+  files:   { type: array, items: { type: string } }   # files the patch touches

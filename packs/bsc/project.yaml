@@ -22,6 +22,7 @@ blocks:
   - ../review/blocks/providers.py
   - ../hunt/blocks/probe.py         # differential-probe oracle (evidence gate + no-AI finder)
   - ../hunt/blocks/conductor.py     # generic campaign brain (dispatch/bandit/leasing)
+  - ../fix/blocks/fix.py            # generic auto-fix state machine (prepare/verify/abandon)
   - blocks/bsc.py                   # BSC: manual-wins gate, base clang, ensure_base
   - blocks/ingest.py                # BSC: code_notes -> readings
   - blocks/seed.py                  # BSC: vault knowledge -> findings/patterns/methods/chains
@@ -32,12 +33,14 @@ prompts:
   explore: prompts/explorer.md
   exploit: prompts/exploiter.md
   scout:  prompts/scout.md
+  fix:    prompts/fixer.md
 schemas:
   review_findings:  ../review/schemas/review_findings.yaml
   refute_decisions: ../review/schemas/refute_decisions.yaml
   explore_result:   ../hunt/schemas/explore_result.yaml
   exploit_result:   ../hunt/schemas/exploit_result.yaml
   scout_result:     ../hunt/schemas/scout_result.yaml
+  fix_patch:        ../fix/schemas/fix_patch.yaml
 
 agents:
   # GLM behind the agentic claude CLI (so bsc-* skills + worktree work).
@@ -52,6 +55,8 @@ agents:
   exploit: { backend: claude-cli, model: GLM-5.2,
              env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
   scout:   { backend: claude-cli, model: GLM-5.2,
+             env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
+  fix:     { backend: claude-cli, model: GLM-5.2,
              env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:
@@ -106,6 +111,7 @@ params:
   # shape). Confirm field names on the first dry-run poll.
   prs_url:     "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls?state=open"
   comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls/{payload.request.pr}/comments"
+  pr_create_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls"
   forge_auth:  { token_ref: MAIN, style: query, name: access_token }
   deny_patterns:
     - "BEGIN [A-Z]+ PRIVATE KEY"
@@ -138,3 +144,9 @@ params:
   # from the vault by bsc.ingest_seed at campaign start (hunt_round). The
   # verification oracle is separate and never rotates. Bandit-selected;
   # grown at runtime by the Oracle-Scout.
+
+  # --- auto-fix (fix_finding: triaged finding -> verified patch -> PR) -----
+  fix_branch_prefix: "forgeflow/fix-"
+  # in-place build of the working tree WITH the patch applied (NOT a detached
+  # checkout like the review/base build — the fix must build what it edited).
+  fix_build_cmd: ["ninja", "-C", "{paths.repo}/build", "clang"]

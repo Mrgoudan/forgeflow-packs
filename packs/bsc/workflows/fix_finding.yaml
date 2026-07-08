@@ -1,0 +1,60 @@
+# Auto-fix (HUNT.md remediation): drive ONE triaged finding to an open PR.
+# Trigger: emit fix.requested {finding: <finding-key>}. The finding must be
+# 'triaged' (a review/hunt confirm, or a human). Drives the engine finding
+# state machine: triaged -> fixing -> verifying -> pr_open (or failed).
+workflow: fix_finding
+consumes: [fix.requested]
+emits: []
+
+steps:
+  - name: prepare                    # triaged -> fixing; name the fix branch
+    block: fix.prepare
+    timeout_s: 30
+    params:
+      repo: "{paths.repo}"
+      branch_prefix: "{pack.fix_branch_prefix}"
+    outcomes: { prepared: fix, skip: done }
+
+  - name: fix                        # GLM fixer -> a unified diff + repro
+    block: agent.run
+    llm: fix
+    schema: fix_patch
+    timeout_s: 1800
+    context:
+      - fix_target                   # the finding: title, evidence, repro
+      - bsc_manual                   # authoritative correct behavior
+      - lessons: { task_kind: fix }
+    outcomes:
+      PATCHED: verify
+      NO_FIX: abandon
+      agent_limit: parked
+      agent_backend: parked
+      agent_invalid: abandon
+      timeout: abandon
+
+  - name: verify                     # apply + build + re-run the repro
+    block: fix.verify
+    timeout_s: 7200
+    params:
+      repo: "{paths.repo}"
+      clang: "{pack.hunt_clang}"
+      build_cmd: "{pack.fix_build_cmd}"
+      include: "{pack.probe_include}"
+    outcomes: { green: open, red: abandon, error: abandon, timeout: abandon }
+
+  - name: open                       # commit + PR (gated by FORGE_WRITE)
+    block: forge.open_pr
+    timeout_s: 600
+    params:
+      repo: "{paths.repo}"
+      base: "{payload.base}"
+      pr_create_url: "{pack.pr_create_url}"
+      auth: "{pack.forge_auth}"
+    outcomes: { opened: done, staged: done, nothing: abandon,
+                forge_auth: parked, forge_server: parked, error: abandon,
+                timeout: abandon }
+
+  - name: abandon                    # -> failed (a human can requeue)
+    block: fix.abandon
+    timeout_s: 30
+    outcomes: { failed: done }

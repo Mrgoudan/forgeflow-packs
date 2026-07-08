@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import inspect
 import json
 import os
 import sys
@@ -253,16 +254,27 @@ def _read_pack_text(val):
     return s
 
 
+def _block_doc(block_id):
+    """What a block DOES — straight from its registered function's docstring."""
+    try:
+        from forgeflow.blocks import get
+        return inspect.getdoc(get(block_id).fn) or ""
+    except Exception:
+        return ""
+
+
 def block_detail(conn, pack, workflow_dirs, wf_name, step_name):
-    """Everything behind a block card: its wiring, its PROMPT (for agent
-    steps), its output schema, and its recent runs."""
+    """Everything behind a block card: WHAT IT DOES (docstring), its wiring,
+    its PROMPT (for agent steps), its output schema, and its recent runs."""
     wf = _parse_workflows(workflow_dirs).get(wf_name)
     if not wf:
         return {"error": "no such workflow"}
     st = next((s for s in wf["steps"] if s["name"] == step_name), None)
     if not st:
         return {"error": "no such step"}
+    block_id = "agent.run" if st["llm"] else st["block"]
     out = {"workflow": wf_name, "step": step_name, "block": st["block"],
+           "block_id": block_id, "desc": _block_doc(block_id),
            "llm": st["llm"], "schema": st["schema"], "context": st["context"],
            "outcomes": st["outcomes"], "params": st["params"],
            "timeout_s": st["timeout_s"]}
@@ -482,6 +494,7 @@ z-index:20;overflow-y:auto;padding:16px 18px}
 background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer}
 .drawer .sec{margin-top:14px}.drawer .sec h4{font-size:11px;text-transform:uppercase;
 letter-spacing:.05em;color:var(--dim);margin:0 0 5px}
+.whatdoes{white-space:pre-wrap;color:var(--fg);font-size:12px;line-height:1.55}
 pre{background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:10px;
 overflow-x:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;margin:0}
 .chip{display:inline-block;background:#21262d;border:1px solid var(--line);border-radius:12px;
@@ -556,10 +569,8 @@ function renderQueue(q){
   ) : '<tr><td class=tag>idle — no active tasks</td></tr>';
 }
 const esc=s=>(s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-function heat(ran,max){if(!ran)return'';const t=Math.min(1,ran/(max||1));
-  return `background:rgba(88,166,255,${(0.06+t*0.20).toFixed(2)})`;}
 function stepCard(g,st,max){
-  return `<div class="block ${st.running?'running':''}" style="${heat(st.ran,max)}"
+  return `<div class="block ${st.running?'running':''}"
      onclick="openBlock('${g.name}','${st.name}')">
      <div class=sn>${st.name}</div><div class=bl>${esc(st.block)}</div>
      <div class=ran><span class=badge>${st.ran}</span> ran${st.ms?` · ${st.ms}ms`:''}
@@ -651,6 +662,7 @@ function openBlock(wf,step){
     const sec=(t,h)=>h?`<div class=sec><h4>${t}</h4>${h}</div>`:'';
     drawer.innerHTML=`<button class=x onclick=closeDrawer()>×</button>
       <h3>${esc(b.step)}</h3><div class=sub>${wf} · <span class=bl>${esc(b.block)}</span>${b.timeout_s?` · ${b.timeout_s}s`:''}</div>
+      ${b.desc?sec('What it does',`<div class=whatdoes>${esc(b.desc)}</div>`):''}
       ${sec('Outcomes → next', Object.entries(b.outcomes||{}).map(([o,t])=>`<span class=chip>${o} → ${t}</span>`).join('')||'<span class=tag>—</span>')}
       ${b.context&&b.context.length?sec('Context injected',b.context.map(c=>`<span class=chip>${esc(typeof c==='object'?Object.keys(c)[0]:c)}</span>`).join('')):''}
       ${b.params&&Object.keys(b.params).length?sec('Params',`<pre>${esc(JSON.stringify(b.params,null,2))}</pre>`):''}

@@ -24,6 +24,7 @@ blocks:
   - ../hunt/blocks/conductor.py     # generic campaign brain (dispatch/bandit/leasing)
   - blocks/bsc.py                   # BSC: manual-wins gate, base clang, ensure_base
   - blocks/ingest.py                # BSC: code_notes -> readings
+  - blocks/seed.py                  # BSC: vault knowledge -> findings/patterns/methods/chains
 
 prompts:
   review: prompts/review.md
@@ -50,6 +51,11 @@ agents:
              env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:
+  # the knowledge vault: the campaign's accumulated findings/playbook/methods/
+  # chains. bsc.ingest_seed ports these into native db rows (dedup catalogue,
+  # defect classes, the method bench + bandit priors, call-chain surfaces).
+  vault: /home/ziruichen/bsd/forgeflow-packs/vault/bsc
+
   # user manual = ground truth, inside the reviewed repo
   manual_path: clang/docs/BSC/BiShengCLanguageUserManual.md
   # the manual blob the bsc-* skills were validated against (current HEAD).

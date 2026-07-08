@@ -478,9 +478,15 @@ PAGE = r"""<!doctype html><html><head><meta charset=utf-8>
 --ok:#3fb950;--warn:#d29922;--bad:#f85149;--accent:#58a6ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
 font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
-header{display:flex;align-items:center;gap:12px;padding:12px 18px;
-border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
-h1{font-size:15px;margin:0;font-weight:600}.spacer{flex:1}
+header{display:flex;align-items:center;gap:14px;padding:9px 18px;
+border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10}
+.brand{font-size:15px;font-weight:700;text-decoration:none;color:var(--fg);letter-spacing:.02em;white-space:nowrap}
+.brand .dim{color:var(--dim);font-weight:400}
+nav{display:flex;gap:2px}
+.navtab{padding:5px 14px;border-radius:7px;text-decoration:none;color:var(--dim);font-size:13px;border:1px solid transparent}
+.navtab:hover{color:var(--fg);background:#1b2029}
+.navtab.active{color:var(--fg);background:#1b2029;border-color:var(--accent)}
+.pausebtn{margin-left:2px}.spacer{flex:1}
 .pill{padding:2px 9px;border-radius:12px;border:1px solid var(--line);font-size:11px}
 .pill.on{color:var(--ok);border-color:var(--ok)}.pill.off{color:var(--warn);border-color:var(--warn)}
 main{padding:16px;display:grid;gap:16px;max-width:1200px;margin:0 auto}
@@ -572,12 +578,12 @@ th{color:var(--dim);font-weight:500;font-size:11px}.st-running{color:var(--accen
 .tag{font-size:10px;color:var(--dim)}
 </style></head><body>
 <header>
-  <a href="#/" style="text-decoration:none;color:inherit"><h1>forgeflow · BSC</h1></a>
-  <span id=crumb class=tag></span>
-  <span id=daemon class=pill>daemon …</span>
-  <span id=round class=pill></span>
+  <a href="#/" class=brand>forgeflow<span class=dim> · BSC</span></a>
+  <nav id=nav></nav>
   <div class=spacer></div>
-  <button id=pausebtn onclick="ctl(paused?'resume':'pause')"></button>
+  <span id=round class=pill></span>
+  <span id=daemon class=pill>daemon …</span>
+  <button id=pausebtn class=pausebtn onclick="ctl(paused?'resume':'pause')"></button>
   <span class=tag id=exec></span>
 </header>
 <main><div id=view></div></main>
@@ -836,12 +842,18 @@ function renderWorkflowPage(name){
       `<tr><td>${t.id}</td><td class=st-${t.state}>${t.state}</td><td>${t.step||'—'}</td><td class=tag>${t.age}s</td></tr>`).join(''))
       :'<tr><td class=tag>none active</td></tr>'}</tbody></table></div>`;
 }
-function render(){
-  updateHeader();
+const NAV=[['#/','Home'],['#/cap/review','Review'],['#/cap/hunt','Bug hunt'],['#/cap/fix','Fix']];
+function renderNav(){
   const h=location.hash||'#/';
-  if(h.startsWith('#/wf/')){const n=decodeURIComponent(h.slice(5));crumb.textContent='› '+n;renderWorkflowPage(n);}
-  else if(h.startsWith('#/cap/')){const c=h.slice(6);crumb.textContent='› '+c+' pipeline';renderCapPage(c);}
-  else{crumb.textContent='';renderHome();}
+  nav.innerHTML=NAV.map(([href,label])=>
+    `<a class="navtab${h===href?' active':''}" href="${href}">${label}</a>`).join('');
+}
+function render(){
+  updateHeader();renderNav();
+  const h=location.hash||'#/';
+  if(h.startsWith('#/wf/')) renderWorkflowPage(decodeURIComponent(h.slice(5)));
+  else if(h.startsWith('#/cap/')) renderCapPage(h.slice(6));
+  else renderHome();
 }
 function refresh(){
   Promise.all([j('/api/state'),j('/api/workflows')]).then(([s,w])=>{STATE=s;WFS=w;render();}).catch(()=>{});

@@ -25,6 +25,10 @@ _FACTS_CAP = 8000
 @block("bsc.ingest_notes", "state", {"ok", "error"},
        required_params={"notes_dir", "repo"})
 def bsc_ingest_notes(ctx, task, prev):
+    """Port the file-based code notes into native rows: for each source file
+    listed in code_notes/INDEX.md, a code_objects row + one 'seed' readings row
+    (digest + full note). After this the explorer/reviewer read their context
+    from the db, indistinguishable from readings they produce themselves."""
     conn = ctx["_conn"]
     notes_dir = Path(ctx["notes_dir"])
     repo = str(ctx["repo"])

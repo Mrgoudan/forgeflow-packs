@@ -255,10 +255,12 @@ def _read_pack_text(val):
 
 
 def _block_doc(block_id):
-    """What a block DOES — straight from its registered function's docstring."""
+    """What a block DOES — its function docstring, falling back to the module
+    docstring so a block that skipped its own docstring still says something."""
     try:
         from forgeflow.blocks import get
-        return inspect.getdoc(get(block_id).fn) or ""
+        fn = get(block_id).fn
+        return inspect.getdoc(fn) or (inspect.getdoc(inspect.getmodule(fn)) or "")
     except Exception:
         return ""
 

@@ -45,6 +45,14 @@ _M_ARMROW = re.compile(r"^\|([^|]+)\|\s*\**(\d+)\**\s*\|\s*\**(\d+)\**\s*\|")
 @block("bsc.ingest_seed", "state", {"ok", "error"},
        required_params={"repo", "vault"})
 def bsc_ingest_seed(ctx, task, prev):
+    """Port the campaign's accumulated KNOWLEDGE from the vault into native db
+    rows, so the hunt starts where the last campaign left off (idempotent, run
+    at campaign start):
+      findings.jsonl -> findings   (the dedup catalogue: known defects)
+      _playbook.md   -> patterns   (defect classes C1..C12)
+      _methods.md    -> methods    (the bandit bench + warm-start trial/yield)
+      _chains.md     -> chains      (call-chain surfaces)
+    """
     conn = ctx["_conn"]
     repo = template(ctx["repo"], {})
     vault = Path(template(ctx["vault"], {}))

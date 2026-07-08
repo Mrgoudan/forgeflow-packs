@@ -824,8 +824,11 @@ function renderWfNav(){
 function renderHome(){
   view.innerHTML=`<div class=h>Overview</div><div class=kpis id=kpis></div>
     <div class=h>Capabilities</div><section class=capgrid id=caps></section>
+    <div class=h>Queue <span class=tag>active tasks</span></div>
+    <div class=card><table><tbody id=qbody></tbody></table></div>
     <div class=h>Recent activity</div><div class="card feed" id=feed></div>`;
-  if(STATE){renderKPIs(STATE);renderCaps(STATE);renderFeed(STATE);}
+  if(STATE){renderKPIs(STATE);renderCaps(STATE);
+    document.getElementById('qbody').innerHTML=qrows(STATE.queue);renderFeed(STATE);}
 }
 function renderKPIs(s){
   const F=s.findings||{},tot=Object.values(F).reduce((a,b)=>a+b,0),M=s.methods||{},T=s.tasks||{};

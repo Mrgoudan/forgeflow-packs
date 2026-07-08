@@ -315,6 +315,16 @@ def do_action(conn, subs, action, params):
     elif action == "run_hunt":
         base = params.get("base") or "HEAD"
         db.emit_event(conn, "hunt.round_requested", {"base": base}, subs)
+    elif action == "run_explore":                          # one explore turn
+        db.emit_event(conn, "hunt.explore_requested", {"round": 0}, subs)
+    elif action == "run_scout":                            # the method finder, alone
+        db.emit_event(conn, "hunt.scout_requested", {"round": 0}, subs)
+    elif action == "run_exploit":                          # a saved pattern, alone
+        pat = (params.get("pattern") or "").strip()
+        if not pat:
+            return {"error": "pattern id required (e.g. C1)"}
+        db.emit_event(conn, "hunt.pattern_confirmed", {"pattern": pat}, subs)
+        return {"ok": True, "pattern": pat}
     elif action == "run_review":
         db.emit_event(conn, "forge.poll_requested", {}, subs)
     elif action == "run_fix":
@@ -531,22 +541,34 @@ const ctl=(action,params={})=>j('/api/control',{method:'POST',
   headers:{'Content-Type':'application/json'},body:JSON.stringify({action,params})}).then(refresh);
 const kv=o=>Object.entries(o||{}).map(([k,v])=>`<div class=row><span class=k>${k}</span><span>${v}</span></div>`).join('')||'<div class=row><span class=k>—</span></div>';
 
-const CAP_META={hunt:{run:'run_hunt',label:'Bug hunt'},review:{run:'run_review',label:'Review'},fix:{run:'run_fix',label:'Fix'}};
+// each capability's INDEPENDENT run actions (explore/exploit/scout are
+// separate entry points — the events auto-chain them, but any can run alone).
+const CAP_LABEL={hunt:'Bug hunt',review:'Review',fix:'Fix'};
+const CAP_ACTIONS={
+  review:[{a:'run_review',t:'▶ poll PRs'}],
+  hunt:[{a:'run_hunt',t:'▶ round',base:1},{a:'run_explore',t:'explore'},
+        {a:'run_scout',t:'scout'},{a:'run_exploit',t:'exploit',pat:1}],
+  fix:[{a:'run_fix',t:'▶ fix triaged',base:1}],
+};
 function renderCaps(s){
-  caps.innerHTML=Object.keys(CAP_META).map(c=>{
-    const on=s.control['cap_'+c]==='1', m=CAP_META[c];
-    const needsBase=(c==='hunt'||c==='fix');
-    return `<div class=cap><div class=top><span class=name>${m.label}</span>
-      <span class="pill ${on?'on':'off'}">${on?'enabled':'disabled'}</span></div>
-      <div class=ctl>
-        ${needsBase?`<input id=base_${c} placeholder=base value="bishengc/15.0.4">`:''}
-        <button class=run onclick="run('${c}')">▶ run</button>
-        <button onclick="ctl('${on?'disable':'enable'}',{cap:'${c}'})">${on?'disable':'enable'}</button>
-      </div></div>`;
+  caps.innerHTML=Object.keys(CAP_LABEL).map(c=>{
+    const on=s.control['cap_'+c]==='1', acts=CAP_ACTIONS[c]||[];
+    const needsBase=acts.some(x=>x.base), needsPat=acts.some(x=>x.pat);
+    return `<div class=cap><div class=top><span class=name>${CAP_LABEL[c]}</span>
+      <span class="pill ${on?'on':'off'}">${on?'enabled':'disabled'}</span>
+      <button onclick="ctl('${on?'disable':'enable'}',{cap:'${c}'})">${on?'disable':'enable'}</button></div>
+      ${needsBase?`<input id=base_${c} placeholder=base value="bishengc/15.0.4">`:''}
+      ${needsPat?`<input id=pat_${c} placeholder="pattern id, e.g. C1">`:''}
+      <div class=ctl>${acts.map(x=>`<button class="${x.t[0]==='▶'?'run':''}"
+        onclick="runAct('${c}','${x.a}',${x.pat?1:0})">${x.t}</button>`).join('')}</div></div>`;
   }).join('');
 }
-function run(c){const b=document.getElementById('base_'+c);
-  ctl(CAP_META[c].run,b?{base:b.value}:{});}
+function runAct(c,a,needsPat){
+  const p={}, b=document.getElementById('base_'+c);
+  if(b) p.base=b.value;
+  if(needsPat){const pt=document.getElementById('pat_'+c); p.pattern=pt?pt.value:'';}
+  ctl(a,p);
+}
 
 function renderStats(s){
   stats.innerHTML=`

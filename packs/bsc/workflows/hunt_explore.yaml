@@ -5,7 +5,9 @@
 # campaign saturation. A confirm also emits hunt.pattern_confirmed (exploiter).
 workflow: hunt_explore
 consumes: [hunt.explore_requested]
-emits: [hunt.explore_requested, hunt.pattern_confirmed]
+# merge auto-swaps (explore_requested), spawns an exploiter on a confirm
+# (pattern_confirmed), and at saturation kicks the scout (scout_requested).
+emits: [hunt.explore_requested, hunt.pattern_confirmed, hunt.scout_requested]
 
 steps:
   - name: pick_region

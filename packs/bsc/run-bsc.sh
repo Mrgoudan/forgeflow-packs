@@ -31,6 +31,10 @@ set -a; . "$SECRETS"; set +a
 export FORGEFLOW_SECRETS="$SECRETS"
 export PYTHONPATH="$ENGINE${PYTHONPATH:+:$PYTHONPATH}"
 
+# LIVE deployment: egress posts for real (review comments, issue reports, fix
+# PRs). Set FORGE_WRITE=0 before launching for a dry run (archive only).
+export FORGE_WRITE="${FORGE_WRITE:-1}"
+
 # BSC review is all-domestic (GLM bigmodel + gitcode). The machine's proxy
 # is for international egress and would HANG these endpoints — drop it so
 # the agent and forge calls go direct. (Override by exporting NO_PROXY_UNSET=1.)

@@ -42,6 +42,9 @@ blocks:
   - {src}/blocks/reviewblocks.py
   - {src}/blocks/forge.py
   - {src}/blocks/providers.py
+schema:
+  - {src}/schema.sql
+  - {hunt}/schema.sql
 prompts: {{ review: {src}/prompts/review.md, refute: {src}/prompts/refute.md }}
 schemas:
   review_findings:  {src}/schemas/review_findings.yaml
@@ -55,7 +58,8 @@ params:
   forge_auth: {{ token_ref: T, style: query, name: access_token }}
   deny_patterns: []
   min_severity: {sev}
-""".format(repo=repo, src=(PACKS / "packs" / "review"), cli=cli, forge=forge_url, sev=min_sev))
+""".format(repo=repo, src=(PACKS / "packs" / "review"),
+           hunt=(PACKS / "packs" / "hunt"), cli=cli, forge=forge_url, sev=min_sev))
     return pack
 
 

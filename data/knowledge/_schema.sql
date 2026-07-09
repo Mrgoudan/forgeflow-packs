@@ -11,8 +11,8 @@ CREATE TABLE code_objects (          -- registry of code locations
     last_seen_sha TEXT NOT NULL,         -- bumped when confirmed still present
     UNIQUE(repo, path, symbol)
 );
-DROP TABLE IF EXISTS findings;
-CREATE TABLE findings (
+DROP TABLE IF EXISTS items;
+CREATE TABLE "items" (
     id            INTEGER PRIMARY KEY,
     key           TEXT UNIQUE NOT NULL,  -- stable dedup key
     source        TEXT NOT NULL,         -- which workflow/human/import produced it
@@ -31,7 +31,7 @@ CREATE TABLE findings (
 DROP TABLE IF EXISTS transitions;
 CREATE TABLE transitions (           -- append-only audit log
     id            INTEGER PRIMARY KEY,
-    finding_id    INTEGER NOT NULL REFERENCES findings(id),
+    finding_id    INTEGER NOT NULL REFERENCES "items"(id),
     from_state    TEXT NOT NULL,
     to_state      TEXT NOT NULL,
     event         TEXT NOT NULL,         -- machine event, e.g. 'evidence:build_green'
@@ -98,7 +98,7 @@ CREATE TABLE coverage (              -- hunt ledger: where we have looked
 );
 DROP TABLE IF EXISTS implications;
 CREATE TABLE implications (          -- finding <-> code mapping
-    finding_id    INTEGER NOT NULL REFERENCES findings(id),
+    finding_id    INTEGER NOT NULL REFERENCES "items"(id),
     object_id     INTEGER NOT NULL REFERENCES code_objects(id),
     role          TEXT NOT NULL,         -- root_cause | touched_by_fix | witness
     PRIMARY KEY (finding_id, object_id, role)

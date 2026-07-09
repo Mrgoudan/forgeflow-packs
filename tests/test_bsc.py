@@ -133,6 +133,9 @@ blocks:
   - {bsc}/blocks/seed.py
   - {hunt}/blocks/conductor.py
   - {fix}/blocks/fix.py
+schema:
+  - {rev}/schema.sql
+  - {hunt}/schema.sql
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md

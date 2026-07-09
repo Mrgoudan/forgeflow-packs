@@ -10,6 +10,19 @@ from forgeflow.util import tx
 
 load_files([str(PACKS / "packs" / "hunt" / "blocks" / "conductor.py")])
 
+# the domain tables (regions/methods/patterns/...) live in the packs' schema now,
+# not the engine core — apply them to a raw test connection.
+_SCHEMA = [PACKS / "packs" / "hunt" / "schema.sql",
+           PACKS / "packs" / "review" / "schema.sql"]
+
+
+def _connect(path):
+    conn = db.connect(path)
+    for sf in _SCHEMA:
+        conn.executescript(sf.read_text())
+    return conn
+
+
 REGIONS = [{"id": "a"}, {"id": "b"}, {"id": "c"}]  # seed via list of ids below
 METHODS = [{"id": "m1", "description": "d1"}, {"id": "m2", "description": "d2"}]
 
@@ -32,7 +45,7 @@ def _task(conn, tid):
 class ConductorTest(unittest.TestCase):
     def setUp(self):
         self.dir = tmpdir()
-        self.conn = db.connect(self.dir / "t.db")
+        self.conn = _connect(self.dir / "t.db")
         with tx(self.conn):
             get("hunt.seed").fn(_ctx(self.conn, repo="r",
                                      regions=["a", "b", "c"], methods=METHODS),
@@ -66,7 +79,7 @@ class ConductorTest(unittest.TestCase):
         (repo / "clang/lib/Parse/ParseExpr.cpp").write_text(
             "void f(){ if (getLangOpts().BSC) {} }\n")
         (repo / "clang/lib/Parse/ParseOther.cpp").write_text("// nothing here\n")
-        conn = db.connect(d / "g.db")
+        conn = _connect(d / "g.db")
         with tx(conn):
             get("hunt.seed").fn(
                 _ctx(conn, repo=str(repo), regions=[],
@@ -253,6 +266,9 @@ blocks:
   - {bsc}/blocks/seed.py
   - {hunt}/blocks/conductor.py
   - {fix}/blocks/fix.py
+schema:
+  - {rev}/schema.sql
+  - {hunt}/schema.sql
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md

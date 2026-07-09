@@ -41,6 +41,11 @@ blocks:
   - blocks/ingest.py                # BSC: code_notes -> readings
   - blocks/seed.py                  # BSC: vault knowledge -> items/patterns/methods/chains
 
+# DB schema the packs own (the engine core ships only generic tables now):
+schema:
+  - ../review/schema.sql            # patterns, lessons, implications
+  - ../hunt/schema.sql              # methods, regions, chains, coverage
+
 prompts:
   review: prompts/review.md
   refute: prompts/refute.md

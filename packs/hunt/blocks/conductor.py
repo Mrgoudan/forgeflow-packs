@@ -505,8 +505,16 @@ def hunt_verify_candidate(ctx, task, prev):
                 "pattern": finding.get("pattern"),
                 "severity": finding.get("severity", "medium"),
                 "grep_rule": finding.get("grep_rule"),
+                # evidence is what the bug REPORT renders: the full probe, the
+                # invariant that was violated (expect_error/expect_contains =
+                # the EXPECTED behavior), and the compiler's real output
+                # (actual). Snapshot the diagnostic inline so the report never
+                # depends on the run dir surviving.
                 "evidence": {"why": why, "exit_code": code,
-                             "stderr_path": err, "probe": finding["probe"][:500]}}
+                             "stderr_path": err, "actual": stderr.strip()[:1200],
+                             "expect_error": expect_error,
+                             "expect_contains": finding.get("expect_contains"),
+                             "probe": finding["probe"][:8000]}}
     return ("confirmed" if confirmed else "refuted"), dict(passthrough,
                                                            verified=verified)
 

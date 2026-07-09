@@ -290,6 +290,59 @@ def _forge_post(url, data, auth, timeout_s):
         return 599, None
 
 
+def _behavior(ev):
+    """Derive (expected, actual) prose from the oracle's evidence — what the
+    compiler SHOULD have done vs what it did. The oracle classifies by whether
+    the probe should error (expect_error) and how the compiler actually exited;
+    `why` names the divergence, `actual` is the real diagnostic it emitted."""
+    why = (ev.get("why") or "").lower()
+    code = ev.get("exit_code")
+    diag = (ev.get("actual") or "").strip()
+    if not diag and ev.get("stderr_path"):          # fall back to the run dir
+        try:
+            diag = Path(ev["stderr_path"]).read_text(errors="replace").strip()
+        except OSError:
+            diag = ""
+    # scrub the machine's temp probe path out of the diagnostic (no local
+    # filesystem paths in a public issue) -> "repro.cbs:line:col: error: ...".
+    diag = re.sub(r"\S*cand\.cbs", "repro.cbs", diag)
+    if "crash" in why:
+        return ("The compiler should accept the repro or reject it with a clean "
+                "diagnostic — never crash.",
+                "The compiler **crashes** (exit %s)." % code, diag)
+    if "missed diagnostic" in why or "accepted" in why:
+        return ("The repro is **unsafe** BSC — the compiler must reject it with "
+                "an ownership/safety diagnostic.",
+                "The compiler **accepts it silently** (exit %s); the required "
+                "diagnostic is missing." % code, "")
+    if "false positive" in why or "rejected" in why:
+        return ("The repro is **valid** BSC — the compiler should accept it and "
+                "compile without error.",
+                "The compiler **rejects valid code** (exit %s):" % code, diag)
+    return ("(see repro)",
+            (ev.get("why") or "diverges from base clang")
+            + (" (exit %s)" % code if code is not None else ""), diag)
+
+
+def _finding_report_body(title, key, severity, pattern, ev):
+    """The comment body for one confirmed finding: root cause (the headline +
+    class), the Expected/Actual behavior contrast (with the real diagnostic),
+    and the full .cbs repro."""
+    probe = (ev.get("probe") or "").strip()
+    expected, actual, diag = _behavior(ev)
+    lines = [
+        "### %s" % (title or key), "",
+        "**Severity:** %s   ·   **Root-cause class:** `%s`   ·   **Key:** `%s`"
+        % (severity or "?", pattern or "—", key), "",
+        "**Expected behavior:** %s" % expected, "",
+        "**Actual behavior:** %s" % actual]
+    if diag:
+        lines += ["", "```", diag, "```"]
+    lines += ["", "**Minimal repro (`.cbs`):**", "```c", probe, "```", "",
+              "_Verified against base clang by forgeflow bug-hunt._"]
+    return "\n".join(lines)
+
+
 @block("forge.report_finding", "egress",
        {"commented", "archived", "duplicate", "skipped", "leak_blocked",
         "forge_auth", "forge_server", "timeout"},
@@ -313,15 +366,13 @@ def forge_report_finding(ctx, task, prev):
         ev = json.loads(r["detail"] or "{}")
     except ValueError:
         ev = {}
-    probe = (ev.get("probe") or "").strip()
-    body = "\n".join([
-        "### %s" % (r["title"] or key), "",
-        "**Severity:** %s   **Root-cause class:** `%s`   **Key:** `%s`"
-        % (r["severity"] or "?", r["pattern"] or "—", key), "",
-        "**What the oracle observed:** %s (compiler exit %s)"
-        % (ev.get("why", "—"), ev.get("exit_code", "?")), "",
-        "**Minimal repro (`.cbs`):**", "```c", probe or "(probe not recorded)", "```", "",
-        "_Verified against base clang by forgeflow bug-hunt._"])
+    # only report ORACLE-CONFIRMED findings: a real repro is the evidence. A
+    # finding with no probe is a vault/catalogue entry that was never verified
+    # against base clang this campaign — never file it (that produced the
+    # "probe not recorded / observed: —" junk comments).
+    if not (ev.get("probe") or "").strip():
+        return "skipped", {"reason": "no probe (not oracle-confirmed)", "finding": key}
+    body = _finding_report_body(r["title"], key, r["severity"], r["pattern"], ev)
     for pattern in ctx.get("deny_patterns", ()):
         if re.search(pattern, body):
             return "leak_blocked", {"pattern": pattern}

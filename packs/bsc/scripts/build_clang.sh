@@ -4,8 +4,14 @@
 # has the branch), then ninja the clang target. Leaves build/bin/clang
 # reflecting the PR so the probe sweep tests PR behavior.
 #   build_clang.sh <repo> <build_dir> <head_sha>
+# Parallelism is CAPPED (BUILD_JOBS, default 6): uncapped `ninja` runs
+# #cores+2 C++ compiles, and LLVM TUs each want 1-2 GB — on a 12-core/31 GB
+# box that pins every core and drives the machine into swap (freeze). 6 jobs
+# keep headroom for the OS + the GLM agent + the hunt. Raise BUILD_JOBS if the
+# box is bigger / idle.
 set -euo pipefail
 REPO="$1"; BUILD="$2"; SHA="$3"
+JOBS="${BUILD_JOBS:-6}"
 git -C "$REPO" checkout -q --detach "$SHA"
-ninja -C "$BUILD" clang
-echo "built PR clang at $BUILD/bin/clang (detached $SHA)"
+ninja -j "$JOBS" -C "$BUILD" clang
+echo "built PR clang at $BUILD/bin/clang (detached $SHA, -j $JOBS)"

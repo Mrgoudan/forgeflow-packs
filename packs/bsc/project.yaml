@@ -174,4 +174,4 @@ params:
   fix_branch_prefix: "forgeflow/fix-"
   # in-place build of the working tree WITH the patch applied (NOT a detached
   # checkout like the review/base build — the fix must build what it edited).
-  fix_build_cmd: ["ninja", "-C", "{paths.repo}/build", "clang"]
+  fix_build_cmd: ["ninja", "-j", "6", "-C", "{paths.repo}/build", "clang"]   # -j capped: avoid swap/freeze

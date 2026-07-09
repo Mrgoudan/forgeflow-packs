@@ -5,7 +5,8 @@
 #   refresh_base.sh <repo> <build_dir> <base_branch>
 set -euo pipefail
 REPO="$1"; BUILD="$2"; BASE="$3"
+JOBS="${BUILD_JOBS:-6}"          # cap parallelism (see build_clang.sh: avoid swap/freeze)
 git -C "$REPO" checkout -q "$BASE"
 git -C "$REPO" pull --ff-only 2>&1 | tail -2 || echo "(pull skipped/failed — building current base)"
-ninja -C "$BUILD" clang
-echo "base clang rebuilt at $(git -C "$REPO" rev-parse --short HEAD)"
+ninja -j "$JOBS" -C "$BUILD" clang
+echo "base clang rebuilt at $(git -C "$REPO" rev-parse --short HEAD) (-j $JOBS)"

@@ -1,0 +1,21 @@
+# File a confirmed bug as a forge ISSUE. hunt.pattern_confirmed is emitted by
+# merge_explore the moment the verification oracle confirms a candidate; this
+# reports it upstream. Egress-gated: without FORGE_WRITE=1 the issue body is
+# archived (dry run), never posted. Deduped on the finding key, so a re-confirm
+# never double-files. (This is the REPORT path; the fix PR is a separate loop.)
+workflow: report_issue
+consumes: [hunt.bug_confirmed]
+emits: []
+
+steps:
+  - name: file
+    block: forge.open_issue
+    timeout_s: 120
+    params:
+      issue_url: "{pack.issue_url}"
+      issue_repo: "{pack.issue_repo}"
+      auth: "{pack.forge_auth}"
+      deny_patterns: "{pack.deny_patterns}"
+    outcomes: { opened: done, archived: done, duplicate: done, skipped: done,
+                leak_blocked: done, forge_auth: parked, forge_server: parked,
+                timeout: parked }

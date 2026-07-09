@@ -367,6 +367,15 @@ def do_action(conn, subs, action, params):
             return {"error": "pattern id required (e.g. C1)"}
         db.emit_event(conn, "hunt.pattern_confirmed", {"pattern": pat}, subs)
         return {"ok": True, "pattern": pat}
+    elif action == "file_issues":                          # report confirmed bugs as issues
+        n = 0
+        for r in conn.execute(
+                "SELECT key, pattern FROM findings WHERE source='bughunt'"
+                " AND ('issue:'||key) NOT IN (SELECT target FROM egress WHERE kind='issue')"):
+            db.emit_event(conn, "hunt.bug_confirmed",
+                          {"finding_key": r["key"], "pattern": r["pattern"]}, subs)
+            n += 1
+        return {"ok": True, "queued": n}
     elif action == "run_review":
         db.emit_event(conn, "forge.poll_requested", {"poll": int(time.time())}, subs)
     elif action == "run_fix":
@@ -611,7 +620,8 @@ const CAP_LABEL={hunt:'Bug hunt',review:'Review',fix:'Fix'};
 const CAP_ACTIONS={
   review:[{a:'run_review',t:'▶ poll PRs'}],
   hunt:[{a:'run_hunt',t:'▶ round',base:1},{a:'run_explore',t:'explore'},
-        {a:'run_scout',t:'scout'},{a:'run_exploit',t:'exploit',pat:1}],
+        {a:'run_scout',t:'scout'},{a:'run_exploit',t:'exploit',pat:1},
+        {a:'file_issues',t:'file issues'}],
   fix:[{a:'run_fix',t:'▶ fix triaged',base:1}],
 };
 const AUTO={review:1,fix:1};                              // enabled == auto-trigger

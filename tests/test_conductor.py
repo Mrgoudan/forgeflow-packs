@@ -298,6 +298,8 @@ params:
   fix_branch_prefix: "forgeflow/fix-"
   fix_build_cmd: ["true"]
   pr_create_url: "http://x/pulls"
+  issue_url: "http://x/issues"
+  issue_repo: "r"
 """.format(base=base, bsc=bsc, rev=rev, hunt=hunt, fix=fix, fa=FAKE_AGENT,
            ex=explorer_cli, sc=sc, clang=fake_clang))
     return pack

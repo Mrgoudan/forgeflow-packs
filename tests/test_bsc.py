@@ -179,6 +179,8 @@ params:
   fix_branch_prefix: "forgeflow/fix-"
   fix_build_cmd: ["true"]
   pr_create_url: "http://unused/pulls"
+  issue_url: "http://unused/issues"
+  issue_repo: "r"
 """.format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
            rev=(PACKS / "packs" / "review"), hunt=(PACKS / "packs" / "hunt"),
            fix=(PACKS / "packs" / "fix"), cli=cli, manual=MANUAL, pinned=pinned))

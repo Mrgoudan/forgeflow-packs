@@ -299,6 +299,9 @@ def hunt_merge_explore(ctx, task, prev):
         emits.append({"op": "emit_event", "name": "hunt.pattern_confirmed",
                       "payload": {"pattern": verified.get("pattern"),
                                   "finding_key": key, "region": region}})
+        emits.append({"op": "emit_event", "name": "hunt.bug_confirmed",
+                      "payload": {"finding_key": key,
+                                  "pattern": verified.get("pattern")}})
         outcome = "confirmed"
     else:
         if region is not None:

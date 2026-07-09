@@ -265,3 +265,93 @@ def forge_open_pr(ctx, task, prev):
                       "_staged": [{"op": "transition", "finding_id": r["id"],
                                    "to_state": "pr_open", "event": "fix:pr_opened",
                                    "evidence": {"pr_number": number, "branch": branch}}]}
+
+
+@block("forge.open_issue", "egress",
+       {"opened", "archived", "duplicate", "skipped", "leak_blocked",
+        "forge_auth", "forge_server", "timeout"},
+       required_params={"issue_url"})
+def forge_open_issue(ctx, task, prev):
+    """File a CONFIRMED bug as a forge ISSUE. Egress choke point: leak-scan ->
+    egress row (dedup on the finding key, so a re-confirm never double-files)
+    -> forge POST (only with FORGE_WRITE=1, else archived). On success records
+    the issue number back on the finding."""
+    conn = ctx["_conn"]
+    payload = task.get("payload") or {}
+    key = payload.get("finding_key") or payload.get("finding")
+    if not key:
+        return "skipped", {"reason": "no finding in payload"}
+    r = conn.execute("SELECT id, key, title, detail, severity, pattern"
+                     " FROM findings WHERE key=?", (key,)).fetchone()
+    if not r:
+        return "skipped", {"reason": "no such finding", "finding": key}
+    try:
+        ev = json.loads(r["detail"] or "{}")
+    except ValueError:
+        ev = {}
+    probe = (ev.get("probe") or "").strip()
+    title = "[BSC] %s" % (r["title"] or key)
+    body = "\n".join([
+        "**Severity:** %s   **Root-cause class:** `%s`" % (r["severity"] or "?", r["pattern"] or "—"),
+        "**Finding key:** `%s`" % key, "",
+        "**What the oracle observed:** %s (compiler exit %s)"
+        % (ev.get("why", "—"), ev.get("exit_code", "?")), "",
+        "**Minimal repro (`.cbs`):**", "```c", probe or "(probe not recorded)", "```", "",
+        "_Filed automatically by forgeflow bug-hunt; the repro was verified against base clang._"])
+    for pattern in ctx.get("deny_patterns", ()):
+        if re.search(pattern, body):
+            return "leak_blocked", {"pattern": pattern}
+    url = _tpl(ctx["issue_url"], ctx, task, prev)
+    target = "issue:%s" % key
+    body_sha = sha256_text(body)
+    with ensure_tx(conn):
+        row = conn.execute("SELECT id, forge_id FROM egress WHERE kind='issue'"
+                           " AND target=?", (target,)).fetchone()
+        if row and row["forge_id"]:
+            return "duplicate", {"egress_id": row["id"], "forge_id": row["forge_id"]}
+        if row:
+            egress_id = row["id"]
+        else:
+            bp = Path(ctx["_step_dir"])
+            bp.mkdir(parents=True, exist_ok=True)
+            body_path = bp / "issue.md"
+            body_path.write_text(body)
+            egress_id = conn.execute(
+                "INSERT INTO egress(kind, target, body_sha, body_path, task_id)"
+                " VALUES ('issue',?,?,?,?)", (target, body_sha, str(body_path),
+                                              task["id"])).lastrowid
+    if os.environ.get("FORGE_WRITE") != "1":
+        return "archived", {"egress_id": egress_id, "finding": key}
+
+    headers = {"Content-Type": "application/json"}
+    auth = ctx.get("auth")
+    if auth and auth.get("token_ref"):
+        token = load_secrets().get("FORGE_TOKEN_%s" % auth["token_ref"])
+        if not token:
+            return "forge_auth", {"detail": "FORGE_TOKEN_%s missing" % auth["token_ref"]}
+        if auth.get("style") == "query":
+            sep = "&" if "?" in url else "?"
+            url = "%s%s%s=%s" % (url, sep, auth.get("name", "access_token"), token)
+        else:
+            headers[auth.get("name", "PRIVATE-TOKEN")] = token
+    data = {"title": title, "body": body}
+    if ctx.get("issue_repo"):                         # gitee/gitcode: repo in body
+        data["repo"] = template(ctx["issue_repo"], {})
+    req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"),
+                                 headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=ctx["_timeout_s"]) as resp:
+            iss = json.loads(resp.read().decode("utf-8") or "{}")
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return "forge_auth", {"status": e.code}
+        return "forge_server", {"status": e.code}
+    except OSError as e:
+        return "forge_server", {"detail": str(e)}
+    number = iss.get("number") or iss.get("iid") or iss.get("id")
+    with ensure_tx(conn):
+        conn.execute("UPDATE egress SET forge_id=? WHERE id=?", (str(number), egress_id))
+        ev["issue_number"] = number
+        conn.execute("UPDATE findings SET detail=? WHERE id=?",
+                     (json.dumps(ev), r["id"]))
+    return "opened", {"finding": key, "issue_number": number}

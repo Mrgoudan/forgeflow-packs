@@ -116,6 +116,11 @@ params:
   prs_url:     "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls?state=open"
   comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls/{payload.request.pr}/comments"
   pr_create_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls"
+  # confirmed bugs are filed as issues here (gitee/gitcode v5: owner-level
+  # endpoint, repo in the POST body). Web view:
+  # https://gitcode.com/bisheng_c_language_dep/llvm-project/issues
+  issue_url:   "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/issues"
+  issue_repo:  "llvm-project"
   forge_auth:  { token_ref: MAIN, style: query, name: access_token }
   deny_patterns:
     - "BEGIN [A-Z]+ PRIVATE KEY"

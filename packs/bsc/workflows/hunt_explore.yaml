@@ -7,7 +7,8 @@ workflow: hunt_explore
 consumes: [hunt.explore_requested]
 # merge auto-swaps (explore_requested), spawns an exploiter on a confirm
 # (pattern_confirmed), and at saturation kicks the scout (scout_requested).
-emits: [hunt.explore_requested, hunt.pattern_confirmed, hunt.scout_requested]
+emits: [hunt.explore_requested, hunt.pattern_confirmed, hunt.scout_requested,
+        hunt.bug_confirmed]
 
 steps:
   - name: pick_region

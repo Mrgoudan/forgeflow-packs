@@ -98,46 +98,63 @@ Covered by [`tests/test_bsc.py`](../../tests/test_bsc.py).
 
 ---
 
-## Setup & run
+## Run
+
+Everything launches through `run-bsc.sh` (a thin wrapper that sources
+`packs/config/secrets.env` so the GLM env + gitcode token flow, unsets the
+proxy for the domestic endpoints, and — for a **live deployment — exports
+`FORGE_WRITE=1` so egress posts for real**).
 
 ```bash
-# 1. secrets (GLM key + gitcode token) — never committed
+# 0. secrets (GLM key + gitcode token) — never committed
 $EDITOR packs/config/secrets.env
+./run-bsc.sh validate                  # config check: every workflow total, refs resolve
 
-# 2. run via the wrapper (sources secrets so GLM env + forge token flow)
-./run-bsc.sh validate
-./run-bsc.sh emit forge.poll_requested --data '{}' --drive   # review, dry run (no FORGE_WRITE)
-./run-bsc.sh emit hunt.round_requested --data '{"base":"bishengc/15.0.4"}' --drive   # a hunt
+# --- run the daemon (pick ONE; one daemon per state root) ---
+./run-bsc.sh dash                      # control room: daemon + web UI → http://127.0.0.1:8787
+./run-bsc.sh dash --port 8787          # (explicit port)
+./run-bsc.sh run                       # headless daemon (no UI)
+
+# --- dry run (archive to disk, DON'T post to the forge) ---
+FORGE_WRITE=0 ./run-bsc.sh dash
+
+# --- one-shot: fire a single entry event and drive it to completion ---
+./run-bsc.sh emit hunt.round_requested --data '{"base":"bishengc/15.0.4"}' --drive
+./run-bsc.sh emit forge.poll_requested --data '{}' --drive     # poll + review open PRs
+./run-bsc.sh port                      # one-time vault → db knowledge seed
 ```
 
-## Control room (live dashboard)
+Stop the daemon with `fuser -k 8787/tcp` (kills by port). To halt work without
+killing, hit **⏸ pause** in the dashboard (or set `paused=1` in `dash_control`).
 
-```bash
-./run-bsc.sh dash            # → http://127.0.0.1:8787
-```
+**Triggering model:** review + fix **auto-trigger** (review polls for open PRs;
+fix fires on each new triaged finding); hunt is **manual** (`▶ run` / `emit`)
+but self-sustains once started. Parked tasks auto-recover on a per-class
+cadence (`agent_limit` probes GLM every 30 min and restarts when it answers;
+`forge_auth` never auto-recovers — fix the token, then unpark).
 
-A self-contained (stdlib-only) local web UI that **is** the daemon: a gated
-claim→execute loop runs behind it and obeys the controls you click.
+## Control room (the dashboard)
 
-- **Stats** — tasks / findings / methods / regions / PRs / hunt round, live
-  (2 s poll).
+`./run-bsc.sh dash` is a self-contained (stdlib-only) local web UI that **is**
+the daemon: a gated claim→execute loop runs behind it and obeys the controls
+you click. It replaces `run` — don't run both.
+
+- **Stats** — tasks / findings / methods / regions / PRs / hunt round, live.
 - **Controls** — per capability (bug hunt · review · fix): **▶ run** (emits
   the trigger), **enable/disable** (gates that capability's tasks), plus a
   global **⏸ pause all**.
-- **Queue** — every active task with its kind, state, current step, age.
-- **Workflow block-maps** — each workflow drawn as its blocks; hue = run
-  count (heat), a green pulse marks the block a task is **running right now**
-  (routed from the last `task_steps` outcome). **Click any block** for a
-  drawer: its outcomes, injected context, params, the **agent prompt**, the
-  output schema, and recent runs (outcome · ms · result).
+- **Queue** — every active task with its kind, state, current step; click a
+  row to jump to that block and see its message.
+- **Workflow block-maps** — each workflow drawn as its blocks; a pulse marks
+  the block **running right now**. **Click any block** for a drawer: its
+  outcomes, injected context, params, the **agent prompt**, output schema, and
+  recent runs.
 
-Same sourced env as `run` (so its agent tasks reach GLM). It replaces
-`run` — don't run both (one daemon per state root).
-
-`FORGE_WRITE=1` gates real posting / PR creation; without it, comments
-archive and fixes commit to a local branch only. After editing the manual,
-re-validate the skills and bump `manual_pinned_sha`
-(`git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md`).
+> `FORGE_WRITE` (default **1** via `run-bsc.sh`) gates real posting / PR
+> creation; with `FORGE_WRITE=0` comments archive and fixes commit to a local
+> branch only. After editing the manual, re-validate the skills and bump
+> `manual_pinned_sha`
+> (`git -C <repo> rev-parse HEAD:clang/docs/BSC/BiShengCLanguageUserManual.md`).
 
 Pipeline/egress/degraded-mode details: the review pack's
 [RUNBOOK](../review/RUNBOOK.md).

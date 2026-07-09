@@ -62,12 +62,12 @@ DATA_DIR="${FF_DATA:-$PACK_DIR/../../data}"
 if [ "${1:-}" = "export" ]; then
   shift
   exec python3 "$PACK_DIR/scripts/db_export.py" \
-    --db "$FF_ROOT/state/forgeflow.db" --out "$DATA_DIR/forgeflow.knowledge.sql" "$@"
+    --db "$FF_ROOT/state/forgeflow.db" --out "$DATA_DIR/knowledge" "$@"
 fi
 if [ "${1:-}" = "import" ]; then
   shift
   exec python3 "$PACK_DIR/scripts/db_import.py" \
-    --db "$FF_ROOT/state/forgeflow.db" --sql "$DATA_DIR/forgeflow.knowledge.sql" "$@"
+    --db "$FF_ROOT/state/forgeflow.db" --dir "$DATA_DIR/knowledge" "$@"
 fi
 
 exec python3 -m forgeflow --root "$FF_ROOT" --pack "$PACK_DIR" "$@"

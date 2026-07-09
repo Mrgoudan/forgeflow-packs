@@ -371,7 +371,8 @@ def do_action(conn, subs, action, params):
         n = 0
         for r in conn.execute(
                 "SELECT key, pattern FROM findings WHERE source='bughunt'"
-                " AND ('issue:'||key) NOT IN (SELECT target FROM egress WHERE kind='issue')"):
+                " AND ('issue:'||key) NOT IN (SELECT target FROM egress"
+                " WHERE kind='issue' AND forge_id IS NOT NULL)"):
             db.emit_event(conn, "hunt.bug_confirmed",
                           {"finding_key": r["key"], "pattern": r["pattern"]}, subs)
             n += 1

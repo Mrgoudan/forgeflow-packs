@@ -1,0 +1,27 @@
+// PROBE: ensure_init on the FIXED param of a VARIADIC function, called with
+// extra args. Sema's call-site loop (SemaExpr.cpp:7784) iterates NumCallArgs
+// (> NumParams here); classifyEnsureInit (DeclBSC.cpp:26/31/38/41) bounds-guards
+// every path with I < getNumParams() -> vararg indices must classify None.
+// Confirm end-to-end: (a) no crash/bogus diag on vararg indices, (b) contract
+// still credited at index 0 (use_ok rc=0), (c) callee obligation still enforced
+// (bad_callee diagnosed), (d) no-call control still flags uninit x.
+// code_notes/DeclBSC.md classifyEnsureInit candidate 1 (NumParams divergence).
+
+// Callee honors the contract: fully inits *p.
+void fill(int *__attribute__((ensure_init)) p, ...) { *p = 5; }
+
+// (c) callee that VIOLATES the contract — expect "not initialized at return".
+void bad_fill(int *__attribute__((ensure_init)) p, ...) { }
+
+// (b) caller: x uninit, contract credits it across the variadic call → expect clean.
+int use_ok(void) {
+    int x;
+    fill(&_Mut x, 1, 2, 3);
+    return x;
+}
+
+// (d) control: no call — expect "use of uninitialized value: x".
+int use_bad(void) {
+    int x;
+    return x;
+}

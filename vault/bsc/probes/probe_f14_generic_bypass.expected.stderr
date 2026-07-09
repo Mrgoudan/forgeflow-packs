@@ -1,0 +1,7 @@
+<probe>:16:5: error: memory leak because temporary variable 'mk()' is _Owned or indirect _Owned type, please fix it
+    mk();   // CallExpr at top-level → F14 catches → expected ERROR
+    ^
+<probe>:27:57: error: incompatible _Owned types, cannot cast 'int' to 'int *_Owned'
+    _Generic((char)0, char: mk(), default: (int *_Owned)0);
+                                                        ^
+2 errors generated.

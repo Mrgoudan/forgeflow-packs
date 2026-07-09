@@ -1,0 +1,1021 @@
+---
+analysis: init-check
+function: "take"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb2]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "take"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "take"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Owned]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Owned]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "take"
+seen_ast_kinds:
+  - kind: CallExpr
+    count: 1
+...
+---
+analysis: borrow-check
+function: "take"
+actions:
+  - point: BB1/1
+    action: "ActionInit: _borrowck_tmp_0 = use(p, )"
+  - point: BB1/2
+    action: "ActionInit: _borrowck_tmp_1 = use(_borrowck_tmp_0, )"
+  - point: BB1/3
+    action: "ActionUse:  use(_borrowck_tmp_1, )"
+  - point: BB1/4
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB1/5
+    action: "ActionStorageDead: _borrowck_tmp_0"
+regions: []
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: ["p"]
+  - block: 2
+    live_at_entry: ["p"]
+loans: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "take"
+seen_ast_kinds: []
+...
+---
+analysis: init-check
+function: "test_safe"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb0]
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+  - block: bb2
+    preds: [bb1]
+    succs: [bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+  - block: bb3
+    preds: [bb2]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "test_safe"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "test_safe"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "test_safe"
+seen_ast_kinds:
+  - kind: CallExpr
+    count: 1
+  - kind: DeclStmt
+    count: 1
+...
+---
+analysis: borrow-check
+function: "test_safe"
+actions:
+  - point: BB1/1
+    action: "ActionInit: _borrowck_tmp_0 = use()"
+  - point: BB1/2
+    action: "ActionInit: _borrowck_tmp_1 = use(_borrowck_tmp_0, )"
+  - point: BB1/3
+    action: "ActionInit: p = use(_borrowck_tmp_1, )"
+  - point: BB1/4
+    action: "ActionInit: _borrowck_tmp_2 = use(p, )"
+  - point: BB1/5
+    action: "ActionUse:  use(_borrowck_tmp_2, )"
+  - point: BB1/6
+    action: "ActionStorageDead: _borrowck_tmp_2"
+  - point: BB1/7
+    action: "ActionStorageDead: p"
+  - point: BB1/8
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB1/9
+    action: "ActionStorageDead: _borrowck_tmp_0"
+regions: []
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: []
+  - block: 2
+    live_at_entry: []
+loans: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "test_safe"
+seen_ast_kinds: []
+...
+---
+analysis: init-check
+function: "safe_malloc"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb7]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: MaybeInit
+        - id: "_8"
+          state: MaybeInit
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: MaybeInit
+        - id: "_11"
+          state: MaybeInit
+        - id: "_12"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: MaybeInit
+        - id: "_8"
+          state: MaybeInit
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: MaybeInit
+        - id: "_11"
+          state: MaybeInit
+        - id: "_12"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb4, bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+  - block: bb3
+    preds: [bb2]
+    succs: [bb6]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Initialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+  - block: bb4
+    preds: [bb2]
+    succs: [bb5]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Uninitialized
+        - id: "_8"
+          state: Uninitialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+  - block: bb5
+    preds: [bb4, bb6]
+    succs: [bb7]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: MaybeInit
+        - id: "_8"
+          state: MaybeInit
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: MaybeInit
+        - id: "_11"
+          state: MaybeInit
+        - id: "_12"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: MaybeInit
+        - id: "_8"
+          state: MaybeInit
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: MaybeInit
+        - id: "_11"
+          state: MaybeInit
+        - id: "_12"
+          state: Uninitialized
+  - block: bb6
+    preds: [bb3]
+    succs: [bb5]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Initialized
+        - id: "_8"
+          state: Initialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Uninitialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Initialized
+        - id: "_8"
+          state: Initialized
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: Initialized
+        - id: "_11"
+          state: Uninitialized
+        - id: "_12"
+          state: Uninitialized
+  - block: bb7
+    preds: [bb5]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: MaybeInit
+        - id: "_8"
+          state: MaybeInit
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: MaybeInit
+        - id: "_11"
+          state: MaybeInit
+        - id: "_12"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (addr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: MaybeInit
+        - id: "_8"
+          state: MaybeInit
+        - id: "_9 (bsc_bad_alloc_handler)"
+          state: Initialized
+        - id: "_10"
+          state: MaybeInit
+        - id: "_11"
+          state: MaybeInit
+        - id: "_12"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "safe_malloc"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+  - block: 1
+    preds: [2, 3]
+    succs: [0]
+    entry:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+  - block: 2
+    preds: [4]
+    succs: [1]
+    entry:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+  - block: 3
+    preds: [4]
+    succs: [1]
+    entry:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "addr"
+          nullability: NonNull
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+  - block: 4
+    preds: [5]
+    succs: [3, 2]
+    entry:
+      vars:
+        - var: "addr"
+          nullability: Nullable
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "addr"
+          nullability: Nullable
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+  - block: 5
+    preds: []
+    succs: [4]
+    exit:
+      vars:
+        - var: "addr"
+          nullability: Nullable
+        - var: "bsc_bad_alloc_handler"
+          nullability: Nullable
+diagnostics: []
+...
+---
+analysis: init-check
+function: "forget"
+blocks:
+  - block: bb0
+    preds: []
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (forget)"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (t)"
+          state: Initialized
+        - id: "_2 (forget)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "forget"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      vars:
+        - var: "forget"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "forget"
+          nullability: NonNull
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      vars:
+        - var: "forget"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "forget"
+          nullability: NonNull
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      vars:
+        - var: "forget"
+          nullability: Nullable
+diagnostics: []
+...

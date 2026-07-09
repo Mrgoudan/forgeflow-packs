@@ -1,0 +1,13 @@
+<probe>:15:5: error: cannot assign to `x` because it is borrowed
+    x = 99;            // should ERROR: b might borrow x
+    ^
+<probe>:14:33: note: `x` is borrowed here
+    int *_Borrow b = (c ? &_Mut x : &_Mut y);
+                                ^
+<probe>:23:5: error: cannot assign to `y` because it is borrowed
+    y = 88;            // should also ERROR: b might borrow y
+    ^
+<probe>:22:43: note: `y` is borrowed here
+    int *_Borrow b = (c ? &_Mut x : &_Mut y);
+                                          ^
+2 errors generated.

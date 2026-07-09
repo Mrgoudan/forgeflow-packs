@@ -1,0 +1,22 @@
+// White-box probe: BSCNullabilityCheck.cpp ~L335 has a join rule for
+// ConditionalOperatorClass but NO case for BinaryConditionalOperatorClass.
+// `(p ?: nonnull_fallback)` — when p is null, value is nonnull_fallback
+// (a nonnull); when non-null, value is p (also nonnull after the null check).
+// So the result is always nonnull → assignment to _Nonnull should succeed.
+// If the analyzer falls through to default (Nullable), this is rejected.
+//
+// HOW TO REPRODUCE:
+//   ./run.sh probes/probe_bincond_nullability.cbs
+
+_Safe int v1(int *_Borrow _Nullable p) {
+    int x = 7;
+    int *_Borrow r = p ?: &_Mut x;   // p OR &_Mut x — always nonnull
+    return *r;
+}
+
+_Safe int v2(int *_Borrow _Nullable p) {
+    int x = 7;
+    // Same shape via ConditionalOperator (control): handled correctly.
+    int *_Borrow r = p ? p : &_Mut x;
+    return *r;
+}

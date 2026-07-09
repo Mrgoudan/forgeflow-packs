@@ -1,0 +1,17 @@
+// Probe: does the borrow checker reject storing a borrow-of-local into a
+// static-storage variable (which outlives the local -> dangling on re-entry)?
+// F95 showed the OWNED leak analysis skips static-locals; if BorrowCk does too,
+// this is a use-after-scope (worse than a leak).
+// EXPECT (sound): `p = &_Mut x;` REJECTED (x is fn-local, p is 'static lifetime).
+// IF ACCEPTED: candidate dangling-borrow soundness hole.
+#include "bishengc_safety.hbs"
+
+_Safe int read_stale(int x) {
+    static int *_Borrow p = nullptr;   // 'static lifetime borrow slot
+    int result = 0;
+    if (p != nullptr) {
+        result = *p;          // on 2nd call: p borrows call-1's x (dead) -> UAF read
+    }
+    p = &_Mut x;              // store borrow of fn-local param into static -> dangles
+    return result;
+}

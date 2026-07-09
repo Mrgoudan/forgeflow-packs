@@ -1,0 +1,4 @@
+<probe>:17:18: error: incompatible function pointer types initializing '_Safe void (*)(int *_Owned _ArrayElem)' with an expression of type '_Safe void (int *_Owned)'
+    _Safe void (*fp)(int *_Owned _ArrayElem p) = free_plain;
+                 ^                               ~~~~~~~~~~
+1 error generated.

@@ -1,0 +1,24 @@
+// F15 candidate runtime: mismatched fnptr-_Owned-_ArrayElem assignment
+// silently accepted. Build + run + valgrind to see whether the mismatch
+// produces wrong memory operations at runtime.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe void free_plain(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "[free_plain called]\n"); }
+    safe_free((void *_Owned)p);
+}
+
+_Safe void test(void) {
+    // Caller allocates array via safe_malloc_array.
+    int *_Owned _ArrayElem arr = safe_malloc_array<int>(4, 7);
+
+    // fnptr is typed for _ArrayElem but assigned to free_plain (plain _Owned).
+    _Safe void (*fp)(int *_Owned _ArrayElem p) = free_plain;
+    fp(arr);    // does this even compile?
+}
+
+int main(void) {
+    _Unsafe { test(); }
+    return 0;
+}

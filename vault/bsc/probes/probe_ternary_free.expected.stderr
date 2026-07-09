@@ -1,0 +1,5 @@
+<probe>:14:12: error: memory leak of value: `q`
+    return 0;
+           ^
+<probe>:14:12: error: memory leak of value: `p`
+2 errors generated.

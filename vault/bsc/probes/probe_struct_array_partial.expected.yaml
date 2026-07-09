@@ -1,0 +1,99 @@
+---
+analysis: init-check
+function: "test"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (np)"
+          state: Initialized
+        - id: "_2 (arr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (np)"
+          state: Initialized
+        - id: "_2 (arr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+  - block: bb1
+    preds: [bb0]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (np)"
+          state: Initialized
+        - id: "_2 (arr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (np)"
+          state: Initialized
+        - id: "_2 (arr)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "test"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics:
+  - kind: NonnullInitByDefault
+    location: "<probe>:10:19"
+    block: 1
+...

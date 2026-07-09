@@ -1,0 +1,7 @@
+<probe>:18:23: error: '&' operator is forbidden in the safe zone
+    int *_Owned *pp = &p;
+                      ^
+<probe>:25:23: error: '&' operator is forbidden in the safe zone
+    int *_Owned *pp = &p;
+                      ^
+2 errors generated.

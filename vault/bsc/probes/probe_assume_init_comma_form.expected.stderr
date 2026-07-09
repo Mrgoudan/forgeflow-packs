@@ -1,0 +1,10 @@
+<probe>:27:1: error: '*p' not initialized at return in __attribute__((ensure_init)) function
+}
+^
+<probe>:25:39: warning: left operand of comma operator has no effect [-Wunused-value]
+    _Unsafe { __assume_initialized(&*(0, p)); }
+                                      ^
+<probe>:32:1: error: '*p' not initialized at return in __attribute__((ensure_init)) function
+}
+^
+1 warning and 2 errors generated.

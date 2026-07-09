@@ -1,0 +1,18 @@
+// Probe: RecordType::hasOwnedFields (TypeBSC.cpp:446) does not unwrap ArrayType
+// element records. A field `struct Inner arr[N]` where Inner has an _Owned field
+// may be MISSED -> the array-of-owned-struct field is wrongly ALLOWED, and Outer
+// is classed non-owned -> the inner owned pointers are untracked (silent leak).
+// EXPECT (sound): declaring such a field is REJECTED ("array cannot be qualified
+// by _Owned even indirectly"), same as a local `struct Inner a[2]`.
+// IF ACCEPTED: candidate HIGH soundness hole (untracked owned inside array field).
+#include "bishengc_safety.hbs"
+
+struct Inner { int *_Owned p; };
+
+// The probe: is an array-of-owned-struct FIELD rejected like the local form is?
+struct Outer { struct Inner arr[2]; };
+
+void f(void) {
+    struct Outer o;
+    (void)o;
+}

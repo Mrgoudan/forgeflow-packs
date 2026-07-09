@@ -1,0 +1,16 @@
+// Probe: conflict in UNSELECTED `_Generic` arm. Selector is (char)0, so
+// char: arm is selected; default: arm is dead code. If the analyzer
+// flags a borrow conflict that exists only in the dead arm, that is a
+// FALSE POSITIVE — analyzer rejects valid program.
+//
+// Run: ./run.sh probes/probe_generic_unselected_arm.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int v_only_dead_arm_conflicts(void) {
+    int x = 0;
+    int *_Borrow b_mut = &_Mut x;
+    // selected (char) arm: deref-int-literal, no borrow of x
+    // unselected (default) arm: conflicts with b_mut — but never evaluated
+    int v = _Generic((char)0, char: 5, default: *&_Const x);
+    return *b_mut + v;
+}

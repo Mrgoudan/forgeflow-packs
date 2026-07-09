@@ -1,0 +1,13 @@
+<probe>:18:40: error: conversion from type 'int *_Owned' to '_Bool' is forbidden in the safe zone
+_Safe void v2(void) { _Bool b = (_Bool)make(); (void)b; }
+                                       ^
+<probe>:21:32: error: memory leak because temporary variable 'make()' is _Owned or indirect _Owned type, please fix it
+_Safe void v3(void) { int z = (make() == nullptr); (void)z; }
+                               ^
+<probe>:28:33: error: conversion from type 'int *_Owned' to '_Bool' is forbidden in the safe zone
+_Safe void v5(void) { take_bool(make()); }    // make() coerced to bool via != nullptr
+                                ^
+<probe>:27:28: note: passing argument to parameter 'b' here
+_Safe void take_bool(_Bool b) { (void)b; }
+                           ^
+3 errors generated.

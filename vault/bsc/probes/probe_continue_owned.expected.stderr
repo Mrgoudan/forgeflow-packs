@@ -1,0 +1,4 @@
+<probe>:11:13: error: memory leak of value: `p`
+            continue;   // leaks p
+            ^
+1 error generated.

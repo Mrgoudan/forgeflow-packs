@@ -1,0 +1,7 @@
+<probe>:8:9: error: cannot cast nullable pointer to nonnull type
+    p = (int *_Owned)nullptr;   // does this NULL-out the analyzer's state?
+        ^
+<probe>:15:5: error: assign to _Owned value: `p`
+    p = nullptr;       // direct null — analyzer should mark p as Null.
+    ^
+2 errors generated.

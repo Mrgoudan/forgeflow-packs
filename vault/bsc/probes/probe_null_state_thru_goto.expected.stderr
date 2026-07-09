@@ -1,0 +1,7 @@
+<probe>:14:12: error: nullable pointer cannot be dereferenced
+    return *p;               // <-- should ERROR: p might be null on this path
+           ^
+<probe>:26:12: error: nullable pointer cannot be dereferenced
+    return *p;     // potentially-null deref — should ERROR
+           ^
+2 errors generated.

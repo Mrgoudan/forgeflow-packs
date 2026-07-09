@@ -1,0 +1,30 @@
+// Cat 1 slice — move buried inside a variadic call's va_arg position.
+//
+// HOW TO REPRODUCE:
+//   ./repro/repro.sh probes/probe_vaarg_move.cbs -valgrind
+//
+// _Safe variadic requires __attribute__((format)) per spec, and the body
+// cannot use va_start / va_arg / va_end inside the safe zone. So the
+// realistic surface is: caller in _Safe passes a move-side-effect through
+// to a printf-style variadic.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "[consume]\n"); }
+    safe_free((void *_Owned)p);
+    return 42;
+}
+
+_Safe int test(void) {
+    int *_Owned p = safe_malloc<int>(7);
+    int r;
+    _Unsafe { r = fprintf(stderr, "ret=%d\n", consume(p)); }
+    return r;
+}
+
+int main(void) {
+    int r;
+    _Unsafe { r = test(); fprintf(stderr, "main r=%d\n", r); }
+    return 0;
+}

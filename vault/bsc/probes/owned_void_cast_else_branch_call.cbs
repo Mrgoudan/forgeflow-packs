@@ -1,0 +1,21 @@
+// PROBE (cont.): VisitCStyleCastExpr else-branch (BSCOwnership.cpp:2297) skips
+// the void-cast subfield-owned check for inner exprs that are not
+// DeclRefExpr / MemberExpr / UnaryOperator(deref). A CallExpr returning a
+// NESTED owned (`int *_Owned *_Owned`) reaches that else branch.
+//
+// Hypothesis: `(void *_Owned)mkNested()` erases the returned nested-owned to
+// void and frees only the outer slot; the inner owned int leaks, with NO
+// diagnostic (the bare-DeclRef form IS rejected: "*outer is _Owned").
+
+#include "bishengc_safety.hbs"
+
+int *_Owned *_Owned mkNested(void) {
+    int *_Owned inner = safe_malloc<int>(5);
+    int *_Owned *_Owned outer = safe_malloc<int *_Owned>(inner);
+    return outer;
+}
+
+int main(void) {
+    safe_free((void *_Owned)mkNested());   // else-branch: subfield check skipped?
+    return 0;
+}

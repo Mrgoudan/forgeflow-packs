@@ -1,0 +1,11 @@
+<probe>:15:14: error: variable has incomplete type 'void'
+void _Unsafe _Owner mk(int *_Nullable _Owned *out) {
+             ^
+<probe>:15:6: error: '_Unsafe' can only appear before on function or statement or parenthesized expression
+void _Unsafe _Owner mk(int *_Nullable _Owned *out) {
+     ^
+<probe>:15:20: error: expected ';' after top level declarator
+void _Unsafe _Owner mk(int *_Nullable _Owned *out) {
+                   ^
+                   ;
+3 errors generated.

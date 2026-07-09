@@ -1,0 +1,23 @@
+// Probe: BSCNullabilityCheck.cpp's VisitUnaryOperator only fires for UO_Deref.
+// `&_Const *p` / `&_Mut *p` are UO_AddrConstDeref / UO_AddrMutDeref — they
+// also dereference p. If p is _Nullable, these should error.
+//
+// HOW TO REPRODUCE:
+//   ./run.sh probes/probe_reborrow_nullable.cbs
+_Safe void use(int *_Borrow p) { (void)p; }
+
+_Safe void v1(int *_Borrow _Nullable p) {
+    int *_Borrow b = &_Mut *p;       // reborrow of *p — p may be null
+    use(b);
+}
+
+_Safe void v2(int *_Borrow _Nullable p) {
+    const int *_Borrow c = &_Const *p;  // const reborrow — same concern
+    use((int *_Borrow)c);    // (just to use it; cast forbidden — alternate)
+}
+
+// Control — plain deref correctly errors
+_Safe void v3(int *_Borrow _Nullable p) {
+    int x = *p;
+    (void)x;
+}

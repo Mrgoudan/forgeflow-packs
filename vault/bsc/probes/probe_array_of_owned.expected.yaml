@@ -1,0 +1,186 @@
+---
+analysis: init-check
+function: "consume"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb2]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "consume"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "consume"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Owned]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Owned]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "consume"
+seen_ast_kinds:
+  - kind: CallExpr
+    count: 1
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: borrow-check
+function: "consume"
+actions:
+  - point: BB1/1
+    action: "ActionInit: _borrowck_tmp_0 = use(p, )"
+  - point: BB1/2
+    action: "ActionInit: _borrowck_tmp_1 = use(_borrowck_tmp_0, )"
+  - point: BB1/3
+    action: "ActionUse:  use(_borrowck_tmp_1, )"
+  - point: BB1/4
+    action: "ActionUse:  use()"
+  - point: BB1/5
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB1/6
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB1/7
+    action: "ActionStorageDead: p"
+regions: []
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: ["p"]
+  - block: 2
+    live_at_entry: ["p"]
+loans: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "consume"
+seen_ast_kinds: []
+...

@@ -1,0 +1,1158 @@
+---
+analysis: init-check
+function: "v1"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb3, bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb3, bb4, bb5]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+  - block: bb2
+    preds: [bb0]
+    succs: [bb4, bb5]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+  - block: bb3
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Initialized
+  - block: bb4
+    preds: [bb2]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+  - block: bb5
+    preds: [bb2]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v1"
+blocks:
+  - block: 0
+    preds: [1, 2, 3]
+    succs: []
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 1
+    preds: [4]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 2
+    preds: [6]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 3
+    preds: [5]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 4
+    preds: [5]
+    succs: [1]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 5
+    preds: [6]
+    succs: [4, 3]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 6
+    preds: [7]
+    succs: [5, 2]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 7
+    preds: []
+    succs: [6]
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+diagnostics:
+  - kind: NullablePointerDereference
+    location: "<probe>:14:12"
+    block: 2
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v1"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 2
+  - kind: GotoStmt
+    count: 1
+  - kind: IfStmt
+    count: 2
+  - kind: LabelStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 3
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v1"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 1
+  - kind: GotoStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: init-check
+function: "v2"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+        - id: "_7"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+        - id: "_7"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb5]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Initialized
+  - block: bb2
+    preds: [bb0, bb4]
+    succs: [bb5, bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Uninitialized
+  - block: bb3
+    preds: [bb2]
+    succs: [bb4, bb5]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Uninitialized
+  - block: bb4
+    preds: [bb3]
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+        - id: "_7"
+          state: Uninitialized
+  - block: bb5
+    preds: [bb2, bb3]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (i)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+        - id: "_6"
+          state: MaybeInit
+        - id: "_7"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v2"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 1
+    preds: [3, 5]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 2
+    preds: [4]
+    succs: [5]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 3
+    preds: [4]
+    succs: [1]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 4
+    preds: [5]
+    succs: [3, 2]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 5
+    preds: [2, 6]
+    succs: [4, 1]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 6
+    preds: [7]
+    succs: [5]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 7
+    preds: []
+    succs: [6]
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+diagnostics:
+  - kind: NullablePointerDereference
+    location: "<probe>:26:12"
+    block: 1
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v2"
+seen_ast_kinds:
+  - kind: BinaryOperator
+    count: 2
+  - kind: BreakStmt
+    count: 1
+  - kind: CompoundStmt
+    count: 4
+  - kind: DeclStmt
+    count: 1
+  - kind: ForStmt
+    count: 1
+  - kind: IfStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 1
+  - kind: UnaryOperator
+    count: 1
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v2"
+seen_ast_kinds:
+  - kind: BinaryOperator
+    count: 1
+  - kind: BreakStmt
+    count: 1
+  - kind: CompoundStmt
+    count: 1
+...
+---
+analysis: init-check
+function: "v3"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb3, bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb2, bb4, bb5]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+        - id: "_4"
+          state: MaybeInit
+        - id: "_5"
+          state: MaybeInit
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+  - block: bb3
+    preds: [bb0]
+    succs: [bb4, bb5]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+  - block: bb4
+    preds: [bb3]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+  - block: bb5
+    preds: [bb3]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v3"
+blocks:
+  - block: 0
+    preds: [1, 3, 6]
+    succs: []
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 2
+    preds: [4]
+    succs: [1]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 3
+    preds: [4]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 4
+    preds: [5, 7]
+    succs: [3, 2]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 5
+    preds: []
+    succs: [4]
+    exit:
+  - block: 6
+    preds: [7]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 7
+    preds: [8]
+    succs: [6, 4]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 8
+    preds: []
+    succs: [7]
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "v3"
+blocks:
+  - block: 0
+    preds: [1, 3, 6]
+    succs: []
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 2
+    preds: [4]
+    succs: [1]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 3
+    preds: [4]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 4
+    preds: [5, 7]
+    succs: [3, 2]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 5
+    preds: []
+    succs: [4]
+    exit:
+      empty: true
+  - block: 6
+    preds: [7]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 7
+    preds: [8]
+    succs: [6, 4]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 8
+    preds: []
+    succs: [7]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v3"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 4
+  - kind: DoStmt
+    count: 1
+  - kind: IfStmt
+    count: 2
+  - kind: IntegerLiteral
+    count: 1
+  - kind: ReturnStmt
+    count: 3
+...
+---
+analysis: borrow-check
+function: "v3"
+actions:
+  - point: BB1/1
+    action: "ActionUse:  use(*p, )"
+  - point: BB1/2
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB1/3
+    action: "ActionStorageDead: p"
+  - point: BB2/1
+    action: "ActionNoop"
+  - point: BB3/1
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB4/1
+    action: "ActionUse:  use()"
+  - point: BB4/2
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB4/3
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB4/4
+    action: "ActionStorageDead: p"
+  - point: BB5/1
+    action: "ActionInit: _borrowck_tmp_1 = use(*p, )"
+  - point: BB5/2
+    action: "ActionNoop"
+  - point: BB7/1
+    action: "ActionUse:  use()"
+  - point: BB7/2
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB7/3
+    action: "ActionStorageDead: p"
+  - point: BB8/1
+    action: "ActionInit: _borrowck_tmp_0 = use(p, )"
+  - point: BB8/2
+    action: "ActionNoop"
+regions:
+  - name: "'region_0"
+    index: 0
+    capped: false
+    points: ["BB1/1", "BB2/1", "BB3/1", "BB5/1", "BB5/2", "BB8/1", "BB8/2"]
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: ["p"]
+  - block: 2
+    live_at_entry: ["p"]
+  - block: 3
+    live_at_entry: ["p"]
+  - block: 4
+    live_at_entry: []
+  - block: 5
+    live_at_entry: ["p"]
+  - block: 6
+    live_at_entry: ["p"]
+  - block: 7
+    live_at_entry: []
+  - block: 8
+    live_at_entry: ["p"]
+  - block: 9
+    live_at_entry: ["p"]
+loans:
+  - point: BB8/1
+    path: "*p"
+    kind: Mut
+    region: []
+cfg_edges:
+  - block: 0
+    preds: [1, 4, 7]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: [3]
+    succs: [1]
+  - block: 3
+    preds: [5]
+    succs: [2]
+  - block: 4
+    preds: [5]
+    succs: [0]
+  - block: 5
+    preds: [6, 8]
+    succs: [4, 3]
+  - block: 6
+    preds: []
+    succs: [5]
+  - block: 7
+    preds: [8]
+    succs: [0]
+  - block: 8
+    preds: [9]
+    succs: [7, 5]
+  - block: 9
+    preds: []
+    succs: [8]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v3"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 2
+...

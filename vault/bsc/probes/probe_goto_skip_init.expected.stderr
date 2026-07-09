@@ -1,0 +1,7 @@
+<probe>:16:12: error: use of possibly uninitialized value: `x`
+    return x;          // should ERROR if c=true path bypasses init
+           ^
+<probe>:25:12: error: use of possibly uninitialized value: `x`
+    return x;          // should ERROR if c=true path bypasses assign
+           ^
+2 errors generated.

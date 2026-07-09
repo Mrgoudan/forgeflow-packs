@@ -1,0 +1,12 @@
+// Probe: IsSafePointerConversion (SemaBSCSafeZone.cpp:821-822) candidate false positive.
+// The trivial->void borrow cast requires DstPointeeIsConst == SrcPointeeIsConst,
+// which rejects ADDING const while erasing to void — a strictly-safe widening.
+// EXPECT: line A (void*_Borrow) ACCEPTED; line B (const void*_Borrow) — if REJECTED
+// despite being a safe add-const widening, that is a precision false positive.
+#include "bishengc_safety.hbs"
+
+_Safe void f(int *_Borrow b) {
+    void *_Borrow v = (void *_Borrow)b;              // A: expect ACCEPT (trivial->void)
+    const void *_Borrow cv = (const void *_Borrow)b; // B: add-const + void widening
+    (void)v; (void)cv;
+}

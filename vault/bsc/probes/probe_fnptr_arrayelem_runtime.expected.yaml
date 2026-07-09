@@ -1,0 +1,286 @@
+---
+analysis: init-check
+function: "free_plain"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb3]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Uninitialized
+        - id: "_6"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Uninitialized
+  - block: bb3
+    preds: [bb2]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (stderr)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+        - id: "_5"
+          state: Initialized
+        - id: "_6"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "free_plain"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "free_plain"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Owned]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Moved]
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      owned_ptr_basic:
+        - var: "p"
+          status: [Owned]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "free_plain"
+seen_ast_kinds:
+  - kind: CallExpr
+    count: 2
+  - kind: CompoundStmt
+    count: 1
+...
+---
+analysis: borrow-check
+function: "free_plain"
+actions:
+  - point: BB1/1
+    action: "ActionInit: _borrowck_tmp_0 = use(stderr, )"
+  - point: BB1/2
+    action: "ActionInit: _borrowck_tmp_1 = use()"
+  - point: BB1/3
+    action: "ActionInit: _borrowck_tmp_2 = use(_borrowck_tmp_1, )"
+  - point: BB1/4
+    action: "ActionInit: _borrowck_tmp_3 = use(_borrowck_tmp_0, _borrowck_tmp_2, )"
+  - point: BB1/5
+    action: "ActionNoop"
+  - point: BB1/6
+    action: "ActionStorageDead: _borrowck_tmp_3"
+  - point: BB1/7
+    action: "ActionStorageDead: _borrowck_tmp_2"
+  - point: BB1/8
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB1/9
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB1/10
+    action: "ActionInit: _borrowck_tmp_4 = use(p, )"
+  - point: BB1/11
+    action: "ActionInit: _borrowck_tmp_5 = use(_borrowck_tmp_4, )"
+  - point: BB1/12
+    action: "ActionUse:  use(_borrowck_tmp_5, )"
+  - point: BB1/13
+    action: "ActionStorageDead: _borrowck_tmp_5"
+  - point: BB1/14
+    action: "ActionStorageDead: _borrowck_tmp_4"
+regions: []
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: ["p", "stderr"]
+  - block: 2
+    live_at_entry: ["p", "stderr"]
+loans: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "free_plain"
+seen_ast_kinds: []
+...

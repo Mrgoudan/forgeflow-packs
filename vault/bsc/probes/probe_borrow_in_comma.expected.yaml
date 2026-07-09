@@ -1,0 +1,609 @@
+---
+analysis: init-check
+function: "use"
+blocks:
+  - block: bb0
+    preds: []
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "use"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "use"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "use"
+seen_ast_kinds:
+  - kind: CStyleCastExpr
+    count: 1
+...
+---
+analysis: borrow-check
+function: "use"
+actions:
+  - point: BB1/1
+    action: "ActionInit: _borrowck_tmp_0 = use(p, )"
+  - point: BB1/2
+    action: "ActionNoop"
+  - point: BB1/3
+    action: "ActionStorageDead: _borrowck_tmp_0"
+regions:
+  - name: "'region_0"
+    index: 0
+    capped: false
+    points: ["BB1/1"]
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: ["p"]
+  - block: 2
+    live_at_entry: ["p"]
+loans:
+  - point: BB1/1
+    path: "*p"
+    kind: Mut
+    region: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "use"
+seen_ast_kinds: []
+...
+---
+analysis: init-check
+function: "v1"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (x)"
+          state: Initialized
+        - id: "_2 (m)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb2]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (x)"
+          state: Initialized
+        - id: "_2 (m)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v1"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "v1"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v1"
+seen_ast_kinds:
+  - kind: BinaryOperator
+    count: 1
+  - kind: CallExpr
+    count: 1
+  - kind: DeclStmt
+    count: 2
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: borrow-check
+function: "v1"
+actions:
+  - point: BB1/1
+    action: "ActionInit: x = use()"
+  - point: BB1/2
+    action: "ActionBorrow: _borrowck_tmp_0 = 'region_6 &mut x"
+  - point: BB1/3
+    action: "ActionInit: _borrowck_tmp_1 = use()"
+  - point: BB1/4
+    action: "ActionAssign: m RegionName { 'region_1 } = _borrowck_tmp_1 RegionName { 'region_0 }"
+  - point: BB1/5
+    action: "ActionInit: x = use()"
+  - point: BB1/6
+    action: "ActionNoop"
+  - point: BB1/7
+    action: "ActionAssign: _borrowck_tmp_3 RegionName { 'region_3 } = m RegionName { 'region_1 }"
+  - point: BB1/8
+    action: "ActionUse:  use(_borrowck_tmp_3, )"
+  - point: BB1/9
+    action: "ActionUse:  use(x, )"
+  - point: BB1/10
+    action: "ActionStorageDead: _borrowck_tmp_3"
+  - point: BB1/11
+    action: "ActionStorageDead: _borrowck_tmp_2"
+  - point: BB1/12
+    action: "ActionStorageDead: m"
+  - point: BB1/13
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB1/14
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB1/15
+    action: "ActionStorageDead: x"
+regions:
+  - name: "'region_0"
+    index: 0
+    capped: false
+    points: ["BB1/4", "BB1/5", "BB1/6", "BB1/7", "BB1/8"]
+  - name: "'region_1"
+    index: 1
+    capped: false
+    points: ["BB1/5", "BB1/6", "BB1/7", "BB1/8"]
+  - name: "'region_2"
+    index: 2
+    capped: false
+    points: ["BB1/5", "BB1/6", "BB1/7", "BB1/8"]
+  - name: "'region_3"
+    index: 3
+    capped: false
+    points: ["BB1/8"]
+  - name: "'region_4"
+    index: 4
+    capped: false
+    points: ["BB1/8"]
+  - name: "'region_5"
+    index: 5
+    capped: false
+    points: []
+  - name: "'region_6"
+    index: 6
+    capped: false
+    points: []
+constraints:
+  - sub_index: 0
+    sup_index: 2
+    point: BB1/5
+  - sub_index: 1
+    sup_index: 4
+    point: BB1/8
+  - sub_index: 2
+    sup_index: 1
+    point: BB1/5
+  - sub_index: 4
+    sup_index: 3
+    point: BB1/8
+  - sub_index: 6
+    sup_index: 5
+    point: BB1/3
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: []
+  - block: 2
+    live_at_entry: []
+loans:
+  - point: BB1/2
+    path: "x"
+    kind: Mut
+    region: []
+  - point: BB1/4
+    path: "*_borrowck_tmp_1"
+    kind: Mut
+    region: ["BB1/5", "BB1/6", "BB1/7", "BB1/8"]
+  - point: BB1/7
+    path: "*m"
+    kind: Mut
+    region: ["BB1/8"]
+  - point: BB1/8
+    path: "*_borrowck_tmp_3"
+    kind: Mut
+    region: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v1"
+seen_ast_kinds: []
+...
+---
+analysis: init-check
+function: "v2"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4 (r)"
+          state: Uninitialized
+        - id: "_5"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4 (r)"
+          state: Uninitialized
+        - id: "_5"
+          state: Initialized
+  - block: bb1
+    preds: [bb0]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4 (r)"
+          state: Uninitialized
+        - id: "_5"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Uninitialized
+        - id: "_2 (m)"
+          state: Uninitialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4 (r)"
+          state: Uninitialized
+        - id: "_5"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v2"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "v2"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v2"
+seen_ast_kinds:
+  - kind: BinaryOperator
+    count: 1
+  - kind: DeclStmt
+    count: 3
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: borrow-check
+function: "v2"
+actions:
+  - point: BB1/1
+    action: "ActionInit: x = use()"
+  - point: BB1/2
+    action: "ActionBorrow: _borrowck_tmp_0 = 'region_0 &mut x"
+  - point: BB1/3
+    action: "ActionAssign: m RegionName { 'region_2 } = _borrowck_tmp_0 RegionName { 'region_1 }"
+  - point: BB1/4
+    action: "ActionInit: x = use()"
+  - point: BB1/5
+    action: "ActionNoop"
+  - point: BB1/6
+    action: "ActionInit: _borrowck_tmp_2 = use()"
+  - point: BB1/7
+    action: "ActionInit: r = use(_borrowck_tmp_2, )"
+  - point: BB1/8
+    action: "ActionUse:  use(r, )"
+  - point: BB1/9
+    action: "ActionStorageDead: r"
+  - point: BB1/10
+    action: "ActionStorageDead: _borrowck_tmp_2"
+  - point: BB1/11
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB1/12
+    action: "ActionStorageDead: m"
+  - point: BB1/13
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB1/14
+    action: "ActionStorageDead: x"
+regions:
+  - name: "'region_0"
+    index: 0
+    capped: false
+    points: ["BB1/3"]
+  - name: "'region_1"
+    index: 1
+    capped: false
+    points: ["BB1/3"]
+  - name: "'region_2"
+    index: 2
+    capped: false
+    points: []
+  - name: "'region_3"
+    index: 3
+    capped: false
+    points: []
+constraints:
+  - sub_index: 0
+    sup_index: 1
+    point: BB1/3
+  - sub_index: 1
+    sup_index: 3
+    point: BB1/4
+  - sub_index: 3
+    sup_index: 2
+    point: BB1/4
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: []
+  - block: 2
+    live_at_entry: []
+loans:
+  - point: BB1/2
+    path: "x"
+    kind: Mut
+    region: ["BB1/3"]
+  - point: BB1/3
+    path: "*_borrowck_tmp_0"
+    kind: Mut
+    region: []
+cfg_edges:
+  - block: 0
+    preds: [1]
+    succs: []
+  - block: 1
+    preds: [2]
+    succs: [0]
+  - block: 2
+    preds: []
+    succs: [1]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v2"
+seen_ast_kinds: []
+...

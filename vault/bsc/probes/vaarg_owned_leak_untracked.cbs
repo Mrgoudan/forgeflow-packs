@@ -1,0 +1,25 @@
+// PROBE: owned pointer extracted via va_arg — is it leak-tracked?
+// BSCIRBuilder::VisitVAArgExpr (:1146) models va_arg as an OPAQUE CONSTANT temp;
+// BSCOwnership.cpp has NO VAArgExpr handling. Hypothesis: `int *_Owned p =
+// va_arg(ap, int *_Owned);` never sets p Owned -> dropping p without consume
+// is NOT diagnosed (leak FN), while the mk() control IS.
+// Variadic is forbidden in _Safe, so both functions are unsafe (default) —
+// ctl_leak also tests whether the leak check runs in unsafe functions at all.
+// code_notes/BSCIRBuilder.md "lowerStmt + expr Visit dispatch" candidate 1.
+#include <stdarg.h>
+
+int *_Owned mk(void);
+void consume(int *_Owned p);
+
+// Control: owned local leaked in an unsafe function — expect "memory leak of value: p".
+void ctl_leak(void) {
+    int *_Owned p = mk();
+}   // no consume
+
+// Probe: same leak, but the owned value came from va_arg.
+void vaarg_leak(int n, ...) {
+    va_list ap;
+    va_start(ap, n);
+    int *_Owned p = va_arg(ap, int *_Owned);
+    va_end(ap);
+}   // no consume — diagnosed?

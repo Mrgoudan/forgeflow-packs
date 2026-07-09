@@ -1,0 +1,36 @@
+// White-box probe (SemaBSCOwnership.cpp:534 CheckTemporaryVarMemoryLeak):
+// the leak check only fires when E is dyn_cast<CallExpr>. A conditional
+// wrapping the call escapes the check.
+//
+// Run: ./run.sh probes/probe_cond_temp_leak.cbs
+//      then -valgrind to confirm runtime leak.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int *_Owned make(void) {
+    _Unsafe { fprintf(stderr, "[make]\n"); }
+    return safe_malloc<int>(7);
+}
+
+// v1: direct call as expression statement — known to be diagnosed.
+//_Safe void v1(void) { make(); }   // would error
+
+// v2: ternary wrapping the call. Compiler may miss the leak check.
+_Safe void v2(int c) {
+    c ? make() : nullptr;
+}
+
+// v3: comma expression — RHS is the value, LHS is side-effect.
+_Safe void v3(void) {
+    (void)0, make();
+}
+
+// v4: parenthesized — should still be a CallExpr after IgnoreParens.
+_Safe void v4(void) {
+    (make());
+}
+
+int main(void) {
+    _Unsafe { v2(1); v3(); v4(); }
+    return 0;
+}

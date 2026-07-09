@@ -1,0 +1,12 @@
+// Probe: ensure_init callee inits only on one return path; other path
+// returns without init. Compiler should diagnose contract violation.
+//
+// Run: ./run.sh probes/probe_ensure_init_partial_return.cbs
+
+_Safe void f(int *_Borrow __attribute__((ensure_init)) p, int c) {
+    if (c) {
+        _Unsafe { __assume_initialized(&*p); }
+        return;
+    }
+    return;     // here *p NOT initialized — should ERROR per ensure_init contract
+}

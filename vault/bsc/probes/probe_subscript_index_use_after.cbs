@@ -1,0 +1,24 @@
+// Variant: explicit use of p AFTER move-inside-subscript-index. If analyzer
+// tracked the move, this MUST error. If not — confirms a false negative.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "[consume]\n"); }
+    safe_free((void *_Owned)p);
+    return 0;
+}
+_Safe int peek(const int *_Borrow b) { return *b; }
+
+_Safe int test(void) {
+    int arr[3] = {10, 20, 30};
+    int *_Owned p = safe_malloc<int>(7);
+    int r = arr[consume(p)];
+    return r + peek(&_Const *p);   // use after move — MUST error if tracked
+}
+
+int main(void) {
+    int r;
+    _Unsafe { r = test(); fprintf(stderr,"r=%d\n",r); }
+    return 0;
+}

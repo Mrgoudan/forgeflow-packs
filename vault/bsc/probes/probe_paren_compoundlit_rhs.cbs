@@ -1,0 +1,33 @@
+// Hypothesis: ActionExtract::VisitBinAssign at BSCBorrowChecker.cpp:449 uses
+// IgnoreImpCasts() (NOT IgnoreParens()) when testing if RHS is a
+// CompoundLiteralExpr. A paren-wrapped compound literal `((struct S){..})`
+// on the RHS bypasses the specialized borrow-aware path → falls back to the
+// generic Kind=Assign branch where the per-field borrow region/source
+// tracking may not be set up correctly.
+//
+// If the analyzer mis-tracks the borrow region from a per-field init that
+// arrived via the paren-wrapped compound literal, we may:
+//   (a) accept code that should be rejected (false negative), or
+//   (b) reject code that should be accepted (false positive).
+//
+// Run: ./run.sh probes/probe_paren_compoundlit_rhs.cbs
+
+struct S {
+    int *_Borrow b;
+};
+
+_Safe int v_control(void) {
+    int x = 0;
+    struct S s = {.b = &_Mut x};
+    s = (struct S){.b = &_Mut x};   // NO paren wrap; goes the special path
+    x = 99;                          // should ERROR: x is frozen via s.b
+    return *s.b;
+}
+
+_Safe int v_probe(void) {
+    int x = 0;
+    struct S s = {.b = &_Mut x};
+    s = ((struct S){.b = &_Mut x}); // PAREN wrap — falls to generic path
+    x = 99;                          // does the borrow still get tracked?
+    return *s.b;
+}

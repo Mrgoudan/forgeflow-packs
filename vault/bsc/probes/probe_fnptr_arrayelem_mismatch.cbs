@@ -1,0 +1,28 @@
+// Hypothesis: SemaBSCOwnership.cpp:CheckOwnedFunctionPointerType compares
+// `isOwnedQualified()` on each param but NOT `isArrayElemQualified()`.
+// So `void(*)(int *_Owned)` and `void(*)(int *_Owned _ArrayElem)` may be
+// silently considered compatible.
+//
+// Run: ./run.sh probes/probe_fnptr_arrayelem_mismatch.cbs
+
+#include "bishengc_safety.hbs"
+
+_Safe void take_plain(int *_Owned p) {
+    safe_free((void *_Owned)p);
+}
+
+_Safe void take_array(int *_Owned _ArrayElem p) {
+    safe_free_array((void *_Owned _ArrayElem)p);
+}
+
+// Function pointer typed for the ARRAY variant; can we assign the PLAIN fn?
+_Safe void test_v1(void) {
+    _Safe void (*fp)(int *_Owned _ArrayElem p) = take_plain;   // should ERROR
+    (void)fp;
+}
+
+// Inverse: pointer typed for PLAIN, assign ARRAY fn.
+_Safe void test_v2(void) {
+    _Safe void (*fp)(int *_Owned p) = take_array;              // should ERROR
+    (void)fp;
+}

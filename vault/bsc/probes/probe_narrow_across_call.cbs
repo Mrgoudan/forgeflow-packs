@@ -1,0 +1,30 @@
+// Cat 5 slice — does narrowing survive (or apply) across a function call?
+//
+// HOW TO REPRODUCE:
+//   ./run.sh probes/probe_narrow_across_call.cbs
+
+_Safe int *_Borrow guaranteed(int *_Borrow _Nullable p);
+
+// v1: assignment-from-Nonnull-returning-fn narrows the destination.
+_Safe int v1(int *_Borrow _Nullable p) {
+    p = guaranteed(p);
+    return *p;
+}
+
+// v2: pass narrowed p to fn; can we still deref after?
+_Safe int v2(int *_Borrow _Nullable p) {
+    if (p == nullptr) return 0;
+    int x = *p;
+    // call any fn — should preserve narrow if signature doesn't take Nullable
+    int *_Borrow q = guaranteed(p);
+    (void)q;
+    return x + *p;
+}
+
+// v3: narrowed local, pass to fn that returns _Nullable; widen back.
+_Safe int *_Borrow _Nullable maybe(int *_Borrow p);
+_Safe int v3(int *_Borrow _Nullable p) {
+    if (p == nullptr) return 0;
+    p = maybe(p);     // re-widen
+    return *p;         // should ERROR
+}

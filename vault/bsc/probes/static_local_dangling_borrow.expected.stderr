@@ -1,0 +1,4 @@
+<probe>:10:25: error: defining mutable global variables is not allowed within the safe zone
+    static int *_Borrow p = nullptr;   // 'static lifetime borrow slot
+                        ^
+1 error generated.

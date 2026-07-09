@@ -1,0 +1,4 @@
+<probe>:13:29: error: type of array cannot be qualified by '_Owned'(even indirectly), 'struct Inner' contains '_Owned' type
+struct Outer { struct Inner arr[2]; };
+                            ^
+1 error generated.

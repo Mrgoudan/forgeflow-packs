@@ -1,0 +1,21 @@
+// PROBE: VisitCStyleCastExpr (BSCOwnership.cpp:2236) only runs the
+// void-cast subfield-owned check for InnerE = DeclRefExpr / MemberExpr /
+// UnaryOperator(deref-chain). An ArraySubscriptExpr falls to the `else`
+// branch (2297) -> Visit(subexpr) with NO checkCastField -> the "not all
+// moved value" guard is skipped.
+//
+// Hypothesis: `(void *_Owned)arr[0]` where arr[0] is a NESTED owned
+// (`int *_Owned *_Owned`) erases to void and frees only the outer slot;
+// the inner owned int is leaked, and -- unlike the bare-DeclRef form
+// (which IS rejected: "*outer is _Owned") -- NO diagnostic fires because
+// the subscript shape misses the check.
+
+#include "bishengc_safety.hbs"
+
+int main(void) {
+    int *_Owned inner = safe_malloc<int>(5);
+    int *_Owned *_Owned arr[1];
+    arr[0] = safe_malloc<int *_Owned>(inner);   // arr[0] owns slot owning inner
+    safe_free((void *_Owned)arr[0]);            // else-branch: subfield check skipped?
+    return 0;
+}

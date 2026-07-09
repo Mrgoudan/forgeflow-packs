@@ -1,0 +1,14 @@
+// Probe: BSCFeatureFinder::VisitType (WalkerBSC.h:60) does not recurse ArrayType.
+// A function whose only BSC syntax is an array of _Owned pointers may be classed
+// "no BSC feature" -> rewriter takes verbatim path -> `_Owned` leaks to .c output
+// (same symptom class as F59, which was the sizeof gap).
+// CHECK: clang -rewrite-bsc <this> ; does the .c output contain literal `_Owned`?
+#include "bishengc_safety.hbs"
+
+void f(void) {
+    int *_Owned arr[2];
+    arr[0] = safe_malloc<int>(1);
+    arr[1] = safe_malloc<int>(1);
+    safe_free(arr[0]);
+    safe_free(arr[1]);
+}

@@ -1,0 +1,37 @@
+// PROBE: mixed-nesting De Morgan narrowing — if(!(p || !q)) ≡ (!p && q)
+// In the then-branch: q is guaranteed NONNULL (need(q) must be ACCEPTED),
+//                     p is guaranteed NULL    (need(p) must be REJECTED).
+// FN direction: fn_use_null_p accepted → unsoundness (known-null passed to _Nonnull).
+// FP direction: fp_use_nonnull_q rejected → false positive (F122 cousin path:
+//   outer LNot flips Negate; || under Negate routes to operator&= union).
+// code_notes/BSCNullCheckInfo.md "De Morgan negated narrowing" candidate 3.
+
+#include "bishengc_safety.hbs"
+
+_Safe void need(int *_Nonnull n) { }
+
+// FN probe: p is null in-branch; need(p) must be rejected.
+_Safe void fn_use_null_p(int *_Nullable p, int *_Nullable q) {
+    if (!(p || !q)) {
+        need(p);   // p == null here → MUST reject
+    }
+}
+
+// FP probe: q is nonnull in-branch; need(q) must be accepted.
+_Safe void fp_use_nonnull_q(int *_Nullable p, int *_Nullable q) {
+    if (!(p || !q)) {
+        need(q);   // q != null here → MUST accept
+    }
+}
+
+// Control: explicit De Morgan twin (!p && q) — q accepted, p rejected expected.
+_Safe void ctl_twin_q(int *_Nullable p, int *_Nullable q) {
+    if (!p && q) {
+        need(q);   // must accept
+    }
+}
+_Safe void ctl_twin_p(int *_Nullable p, int *_Nullable q) {
+    if (!p && q) {
+        need(p);   // must reject
+    }
+}

@@ -1,0 +1,7 @@
+<probe>:29:5: error: memory leak of value: `p`
+    }
+    ^
+<probe>:38:13: error: memory leak of value: `p`
+            break;     // exits loop with p still owned — leak?
+            ^
+2 errors generated.

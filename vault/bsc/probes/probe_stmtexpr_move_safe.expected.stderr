@@ -1,0 +1,19 @@
+<probe>:20:25: error: use of moved value: `p`
+    int v2 = ({ consume(p); 0; });
+                        ^
+<probe>:18:28: warning: expression result unused [-Wunused-value]
+    int v = ({ consume(p); 0; });   // move inside StmtExpr in _Safe zone
+                           ^
+<probe>:20:29: warning: expression result unused [-Wunused-value]
+    int v2 = ({ consume(p); 0; });
+                            ^
+<probe>:26:53: warning: expression result unused [-Wunused-value]
+    int *_Borrow b = ({ int *_Borrow tmp = &_Mut x; tmp; });
+                                                    ^~~
+<probe>:37:24: error: use of moved value: `p`
+    return v + consume(p);
+                       ^
+<probe>:34:47: warning: expression result unused [-Wunused-value]
+    int v = ({ int t = cond ? consume(p) : 0; t; });
+                                              ^
+4 warnings and 2 errors generated.

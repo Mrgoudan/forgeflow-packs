@@ -1,0 +1,4 @@
+<probe>:16:1: error: memory leak of value: `b`
+}
+^
+1 error generated.

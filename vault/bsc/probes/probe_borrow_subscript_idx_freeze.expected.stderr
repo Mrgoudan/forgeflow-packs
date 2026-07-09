@@ -1,0 +1,13 @@
+<probe>:11:5: error: cannot assign to `x` because it is borrowed
+    x = 99;             // should ERROR: b is live, b's last use is below
+    ^
+<probe>:10:28: note: `x` is borrowed here
+    int *_Borrow b = &_Mut x;
+                           ^
+<probe>:21:5: error: cannot assign to `x` because it is borrowed
+    x = 99;             // should ERROR — b is live through peek(b) below
+    ^
+<probe>:20:28: note: `x` is borrowed here
+    int *_Borrow b = &_Mut x;
+                           ^
+2 errors generated.

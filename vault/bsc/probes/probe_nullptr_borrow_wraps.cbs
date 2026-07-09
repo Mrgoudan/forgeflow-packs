@@ -1,0 +1,32 @@
+// Hypothesis: SemaBSCOwnership.cpp:745 uses `IgnoreParens()` only (no
+// IgnoreImpCasts) when matching CXXNullPtrLiteralExpr for `_Borrow`
+// pointer initialization. Various wraps may bypass the check:
+//   - (nullptr) — paren — should be handled (IgnoreParens)
+//   - (void *)nullptr — cast wrap — bypasses (no IgnoreCasts)
+//   - 0 ? nullptr : nullptr — conditional — bypasses
+//
+// If any of these slip through but the analyzer treats the result as
+// _Nonnull, we have nullable→nonnull miss → runtime null deref.
+//
+// Run: ./run.sh probes/probe_nullptr_borrow_wraps.cbs
+
+_Safe int v_baseline_nullable(void) {
+    int *_Borrow _Nullable p = nullptr;   // ok: _Nullable accepts nullptr
+    if (p) return *p;
+    return 0;
+}
+
+_Safe int v_paren_to_nonnull(void) {
+    int *_Borrow p = (nullptr);           // _Borrow defaults Nonnull
+    return *p;                              // should ERROR (or paren bypasses check?)
+}
+
+_Safe int v_cast_to_nonnull(void) {
+    int *_Borrow p = (int *_Borrow)nullptr; // explicit cast
+    return *p;                                // should ERROR
+}
+
+_Safe int v_cond_to_nonnull(void) {
+    int *_Borrow p = 0 ? nullptr : nullptr; // both arms nullptr
+    return *p;                                // should ERROR
+}

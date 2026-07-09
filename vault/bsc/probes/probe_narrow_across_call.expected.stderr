@@ -1,0 +1,4 @@
+<probe>:29:12: error: nullable pointer cannot be dereferenced
+    return *p;         // should ERROR
+           ^
+1 error generated.

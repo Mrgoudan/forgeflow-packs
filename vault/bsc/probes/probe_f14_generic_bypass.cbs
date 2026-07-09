@@ -1,0 +1,29 @@
+// Hypothesis: F14 (CheckTemporaryVarMemoryLeak, SemaBSCOwnership.cpp:534)
+// uses bare `dyn_cast<CallExpr>(E)`. F14 covered paren/cast/comma wrappers.
+// `_Generic` produces a GenericSelectionExpr which is also not a CallExpr.
+//
+// If the F14 fix only adds IgnoreParens / IgnoreParenCasts and doesn't
+// also handle GenericSelectionExpr, then a `_Generic` expression with a
+// leaking _Owned-returning call as the SELECTED branch slips past the
+// leak diagnostic.
+//
+// Run: ./run.sh probes/probe_f14_generic_bypass.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int *_Owned mk(void) { return safe_malloc<int>(1); }
+
+_Safe int baseline_direct(void) {
+    mk();   // CallExpr at top-level → F14 catches → expected ERROR
+    return 0;
+}
+
+_Safe int probe_generic(void) {
+    _Generic((char)0, char: mk(), default: mk());  // GenericSelectionExpr at top
+    return 0;
+}
+
+_Safe int probe_generic_one_arm(void) {
+    // Only selected arm has the call; default is null-returning.
+    _Generic((char)0, char: mk(), default: (int *_Owned)0);
+    return 0;
+}

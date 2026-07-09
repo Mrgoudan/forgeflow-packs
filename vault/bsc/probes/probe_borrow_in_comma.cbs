@@ -1,0 +1,28 @@
+// White-box probe: ActionExtract::VisitBinaryOperator (BSCBorrowChecker.cpp
+// ~L425) and DefUse::VisitBinaryOperator (~L92) don't handle BO_Comma. A
+// borrow created in the RHS of a comma expression may not be tracked.
+//
+// HOW TO REPRODUCE:
+//   ./run.sh probes/probe_borrow_in_comma.cbs
+//   Expected per spec: "cannot use x because it was mutably borrowed".
+//   If silently accepts: false-negative — borrow checker missed the borrow.
+
+_Safe void use(int *_Borrow p) { (void)p; }
+
+// v1: borrow created inside comma RHS, then borrowee mutated.
+_Safe int v1(void) {
+    int x = 1;
+    int *_Borrow m = (0, &_Mut x);
+    x = 99;          // should be an error — x is frozen by m
+    use(m);
+    return x;
+}
+
+// v2: borrow used inside comma RHS (use of m after x mutated).
+_Safe int v2(void) {
+    int x = 1;
+    int *_Borrow m = &_Mut x;
+    x = 99;
+    int r = (0, *m);     // use of m AFTER mutating x — should error
+    return r;
+}

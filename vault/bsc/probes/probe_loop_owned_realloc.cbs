@@ -1,0 +1,44 @@
+// Hypothesis: a loop that allocates, then conditionally frees, then
+// allocates again — does the analyzer track per-iteration state? If
+// the loop body's state at iteration boundary isn't joined correctly,
+// a leak in the unfreed path may go undiagnosed, or a free in already-
+// freed state may go undiagnosed.
+//
+// Run: ./run.sh probes/probe_loop_owned_realloc.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int v_alloc_free_loop(int n) {
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int *_Owned p = safe_malloc<int>(1);
+        total += *p;
+        safe_free((void *_Owned)p);
+    }
+    return total;
+}
+
+_Safe int v_cond_free_loop(int n) {
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int *_Owned p = safe_malloc<int>(2);
+        if (i % 2 == 0) {
+            safe_free((void *_Owned)p);
+        }
+        // if i is odd, p leaks at scope end?
+        total += i;
+    }
+    return total;
+}
+
+_Safe int v_break_in_loop(int n) {
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int *_Owned p = safe_malloc<int>(3);
+        if (i == n - 1) {
+            break;     // exits loop with p still owned — leak?
+        }
+        safe_free((void *_Owned)p);
+        total += i;
+    }
+    return total;
+}

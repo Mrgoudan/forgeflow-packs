@@ -1,0 +1,16 @@
+// Probe: assignment `p = (int *_Owned)nullptr` — is the RHS detected as a
+// null expression so that p's ownership is correctly reset to Null?
+// If the analyzer thinks p is still Owned, scope-end emits a spurious leak.
+#include "bishengc_safety.hbs"
+
+_Safe void v1(void) {
+    int *_Owned _Nullable p = safe_malloc<int>(1);
+    p = (int *_Owned)nullptr;   // does this NULL-out the analyzer's state?
+    // If yes: no leak diagnostic. If no: spurious leak claim.
+}
+
+// Control v2 — direct nullptr should be detected.
+_Safe void v2(void) {
+    int *_Owned _Nullable p = safe_malloc<int>(2);
+    p = nullptr;       // direct null — analyzer should mark p as Null.
+}

@@ -1,0 +1,7 @@
+<probe>:14:58: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = _Generic((char)0, char: 5, default: *&_Const x);
+                                                         ^
+<probe>:11:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+1 error generated.

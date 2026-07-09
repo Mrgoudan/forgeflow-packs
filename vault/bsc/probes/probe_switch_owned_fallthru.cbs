@@ -1,0 +1,39 @@
+// Hypothesis: switch case fallthrough may leave the per-case-block
+// `_is_moved` destructor flag inconsistent. Specifically, if case A
+// consumes p (move) and falls through to case B which also consumes p,
+// the second consume should error at compile-time as use-after-move.
+// If the analyzer's per-CFG-block move tracking only joins state at
+// case boundaries via case labels (not fallthrough), false positive
+// or runtime double-free may occur.
+//
+// Run:
+//   ./run.sh probes/probe_switch_owned_fallthru.cbs
+//   ./repro/repro.sh probes/probe_switch_owned_fallthru.cbs
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) { safe_free((void *_Owned)p); return 0; }
+
+_Safe int v_fallthru_consume_twice(int c) {
+    int *_Owned p = safe_malloc<int>(1);
+    int r = 0;
+    switch (c) {
+    case 1:
+        r = consume(p);
+        // intentional fallthrough — no break
+    case 2:
+        r += consume(p);  // should ERROR if c==1, valid if c==2
+        break;
+    default:
+        r = consume(p);
+        break;
+    }
+    return r;
+}
+
+int main(void) {
+    int v;
+    _Unsafe { v = v_fallthru_consume_twice(2); }
+    printf("v=%d\n", v);
+    return 0;
+}

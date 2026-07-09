@@ -1,0 +1,16 @@
+// Hypothesis: the borrow checker (ActionExtract::VisitArraySubscriptExpr)
+// recurses only along the base chain, never into the INDEX expression.
+// A borrow used as a subscript index is invisible to NLL tracking → the
+// borrowee can be mutated even though the borrow's actual last use is in
+// the subscript.
+//
+// Run: ./run.sh probes/probe_borrow_in_subscript_index.cbs
+
+_Safe int test(void) {
+    int arr[3] = {10, 20, 30};
+    int x = 0;
+    int *_Borrow b = &_Mut x;
+    int v = arr[*b];       // *b is the ONLY use of b (besides decl)
+    x = 99;                // should ERROR: x is frozen by b (or b's NLL ends at *b above)
+    return v + x;
+}

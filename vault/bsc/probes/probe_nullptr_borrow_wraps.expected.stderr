@@ -1,0 +1,13 @@
+<probe>:20:18: error: nonnull pointer cannot be assigned by nullable pointer
+    int *_Borrow p = (nullptr);           // _Borrow defaults Nonnull
+                 ^
+<probe>:25:18: error: nonnull pointer cannot be assigned by nullable pointer
+    int *_Borrow p = (int *_Borrow)nullptr; // explicit cast
+                 ^
+<probe>:25:22: error: cannot cast nullable pointer to nonnull type
+    int *_Borrow p = (int *_Borrow)nullptr; // explicit cast
+                     ^
+<probe>:30:24: error: non-pointer operand type 'nullptr_t' incompatible with nullptr
+    int *_Borrow p = 0 ? nullptr : nullptr; // both arms nullptr
+                       ^           ~~~~~~~
+4 errors generated.

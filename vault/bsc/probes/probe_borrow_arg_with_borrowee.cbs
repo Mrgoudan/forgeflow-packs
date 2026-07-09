@@ -1,0 +1,23 @@
+// Probe: function call passes a borrow AND reads the borrowee in the same
+// argument list. Per spec, x is frozen by b, so reading x is an error.
+// What if the call evaluates b first, then x? Eval-order matters; should
+// still be an error.
+//
+// Run: ./run.sh probes/probe_borrow_arg_with_borrowee.cbs
+
+_Safe void take(int *_Borrow p, int v) { *p = v; (void)p; (void)v; }
+
+// v1: pass b then x. x is read while b is live.
+_Safe void v1(void) {
+    int x = 5;
+    int *_Borrow b = &_Mut x;
+    take(b, x);            // reads x while b borrows it — should ERROR
+}
+
+// v2: pass x then b. Same conflict, different order.
+_Safe void v2(void) {
+    int x = 5;
+    int *_Borrow b = &_Mut x;
+    int v = x;             // explicit read of x — should also ERROR
+    take(b, v);
+}

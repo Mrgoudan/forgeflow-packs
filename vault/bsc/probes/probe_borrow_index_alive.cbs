@@ -1,0 +1,34 @@
+// Hypothesis: ActionExtract::VisitArraySubscriptExpr only visits the BASE,
+// not the INDEX. If a borrow appears ONLY inside the index of an array
+// subscript, the borrow's existence may not register as a use → NLL says
+// it's not alive → mutation of the borrowee succeeds → later read through
+// the borrow is missed.
+//
+// Trick: make the borrow live ACROSS a mutation by using it after the
+// subscript, then referencing the array. The borrow's last use is on a
+// later line; the subscript-index use should keep it alive in between.
+//
+// Variants:
+//   v_control — borrow used outside subscript; should ERROR on x=99.
+//   v_probe   — borrow used only in subscript-index then later; if index
+//               use is invisible, the analyzer may miss tracking.
+//
+// Run: ./run.sh probes/probe_borrow_index_alive.cbs
+
+_Safe int v_control(void) {
+    int arr[3] = {0, 1, 2};
+    int x = 1;
+    int *_Borrow b = &_Mut x;
+    int v = *b;        // direct use
+    x = 99;            // ERROR expected: b still alive (used below)
+    return v + *b;
+}
+
+_Safe int v_probe(void) {
+    int arr[3] = {0, 1, 2};
+    int x = 1;
+    int *_Borrow b = &_Mut x;
+    int v = arr[*b];   // use ONLY via index
+    x = 99;            // ERROR expected: b still alive (used below)
+    return v + arr[*b];
+}

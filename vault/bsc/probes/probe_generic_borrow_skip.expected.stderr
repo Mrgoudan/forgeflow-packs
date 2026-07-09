@@ -1,0 +1,25 @@
+<probe>:19:28: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = helper(&_Const x);   // ERROR expected
+                           ^
+<probe>:18:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+<probe>:28:52: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = helper(_Generic((char)0, char: &_Const x, default: &_Const x));
+                                                   ^
+<probe>:27:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+<probe>:28:72: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = helper(_Generic((char)0, char: &_Const x, default: &_Const x));
+                                                                       ^
+<probe>:27:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+<probe>:36:46: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = _Generic((char)0, char: *&_Const x, default: 0);  // re-borrow x const
+                                             ^
+<probe>:35:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+4 errors generated.

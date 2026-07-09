@@ -1,0 +1,15 @@
+// Probe: semanticEqual/getSemanticExprID must distinguish the SAME field on
+// DIFFERENT base objects. Narrowing s1->f must NOT narrow s2->f.
+// (Distinct from F33, which is the deref-base (*X).f collision; here both bases
+//  are DeclRefExprs s1/s2 — VisitMEForFieldPath DOES handle DeclRef bases.)
+// EXPECT: REJECT on *s2->f (sound). If ACCEPTED -> cross-object FN.
+#include "bishengc_safety.hbs"
+
+struct S { int *_Borrow _Nullable f; };
+
+_Safe int g(struct S s1, struct S s2) {
+    if (s1.f) {
+        return *s2.f;   // s2.f NOT narrowed (different base) -> expect REJECT
+    }
+    return 0;
+}

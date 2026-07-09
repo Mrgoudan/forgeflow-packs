@@ -1,0 +1,27 @@
+// Probe FIXME in BSCIRBuilder.cpp lowerSwitchStmt: brace-less switch body
+// (e.g., `switch (x) case 1: stmt;`) is C-valid but the IR builder only
+// processes `dyn_cast<CompoundStmt>(Body)`. If not CompoundStmt, no regions
+// are built and the body code may be silently elided.
+//
+// Expected: error from safe-zone "case label inside a nested { }" OR clean
+// codegen that actually executes the case body. Either is fine; what would
+// be a BUG is silent acceptance + no code emitted.
+//
+// Run:
+//   /run.sh probes/probe_braceless_switch.cbs
+//   then compile-and-run if it passes syntax-check.
+
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int braceless(int x) {
+    int r = 0;
+    switch (x) case 1: r = 42;       // brace-less switch body
+    return r;
+}
+
+int main(void) {
+    int a, b;
+    _Unsafe { a = braceless(1); b = braceless(0); fprintf(stderr,"a=%d (want 42) b=%d (want 0)\n", a, b); }
+    return 0;
+}

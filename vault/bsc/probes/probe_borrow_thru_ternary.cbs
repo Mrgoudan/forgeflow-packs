@@ -1,0 +1,26 @@
+// Hypothesis: BSCBorrowChecker.cpp has no VisitConditionalOperator override
+// in ActionExtract. The visit falls through to VisitStmt (generic child
+// iteration), which adds source paths from EACH arm of `?:` into the same
+// `Sources` vector. Downstream code reads only `Sources[0]`. So the borrow
+// region for `b = c ? &_Mut x : &_Mut y;` may not include both x and y.
+//
+// If correct: mutating x or y after the assignment should error.
+// If buggy: one of them is "missed" and the mutation slips through.
+//
+// Run: ./run.sh probes/probe_borrow_thru_ternary.cbs
+
+_Safe int v1(int c) {
+    int x = 1, y = 2;
+    int *_Borrow b = (c ? &_Mut x : &_Mut y);
+    x = 99;            // should ERROR: b might borrow x
+    int v = *b;
+    return v;
+}
+
+_Safe int v2(int c) {
+    int x = 1, y = 2;
+    int *_Borrow b = (c ? &_Mut x : &_Mut y);
+    y = 88;            // should also ERROR: b might borrow y
+    int v = *b;
+    return v;
+}

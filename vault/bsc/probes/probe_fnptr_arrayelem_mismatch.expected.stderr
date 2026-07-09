@@ -1,0 +1,7 @@
+<probe>:20:18: error: incompatible function pointer types initializing '_Safe void (*)(int *_Owned _ArrayElem)' with an expression of type '_Safe void (int *_Owned)'
+    _Safe void (*fp)(int *_Owned _ArrayElem p) = take_plain;   // should ERROR
+                 ^                               ~~~~~~~~~~
+<probe>:26:18: error: incompatible function pointer types initializing '_Safe void (*)(int *_Owned)' with an expression of type '_Safe void (int *_Owned _ArrayElem)'
+    _Safe void (*fp)(int *_Owned p) = take_array;              // should ERROR
+                 ^                    ~~~~~~~~~~
+2 errors generated.

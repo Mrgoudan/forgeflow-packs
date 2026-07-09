@@ -1,0 +1,38 @@
+// Hypothesis: BSCIRBuilder.cpp has no VisitStmtExpr — the StmtExpr (`({...})`)
+// falls through to the generic VisitStmt fallback which emits Nop. Any
+// side-effect (like a `_Owned` move via consume call) buried inside a StmtExpr
+// would be invisible to the borrow checker's IR.
+//
+// Two variants:
+//   v1 — StmtExpr drives _Owned move; subsequent use should error (FN if not).
+//   v2 — StmtExpr value bound to _Borrow; mutation should be forbidden.
+//
+// Run: ./run.sh probes/probe_stmtexpr_move_safe.cbs
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) { safe_free((void *_Owned)p); return 0; }
+
+_Safe int v1_use_after_move_inside_stmtexpr(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    int v = ({ consume(p); 0; });   // move inside StmtExpr in _Safe zone
+    // Use after move — should error.
+    int v2 = ({ consume(p); 0; });
+    return v + v2;
+}
+
+_Safe int v2_borrow_thru_stmtexpr(void) {
+    int x = 0;
+    int *_Borrow b = ({ int *_Borrow tmp = &_Mut x; tmp; });
+    x = 99;                              // should ERROR: x borrowed by b
+    return *b;
+}
+
+_Safe int v3_move_in_stmtexpr_then_use(int cond) {
+    int *_Owned p = safe_malloc<int>(2);
+    // Move inside the StmtExpr value position; bind result to v.
+    int v = ({ int t = cond ? consume(p) : 0; t; });
+    // If StmtExpr's inner consume(p) is lost by the IR builder, the analyzer
+    // may treat p as still owned here — use after move below should error.
+    return v + consume(p);
+}

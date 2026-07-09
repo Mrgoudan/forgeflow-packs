@@ -1,0 +1,221 @@
+---
+analysis: init-check
+function: "make"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb3]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+  - block: bb3
+    preds: [bb2]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (stderr)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "make"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+      vars:
+        - var: "stderr"
+          nullability: Nullable
+diagnostics: []
+...
+---
+analysis: init-check
+function: "v1"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb0]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1"
+          state: Initialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v1"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics: []
+...

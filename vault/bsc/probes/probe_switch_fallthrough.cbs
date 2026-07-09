@@ -1,0 +1,36 @@
+// Probe: switch-case fallthrough. A borrow created in case 0 — does it persist
+// through fallthrough into case 1?
+//
+// Run: ./run.sh probes/probe_switch_fallthrough.cbs
+
+_Safe void use(int *_Borrow p) { (void)p; }
+
+_Safe int v1(int c) {
+    int x = 1;
+    switch (c) {
+        case 0: {
+            int *_Borrow b = &_Mut x;
+            use(b);
+            // fall-through (no break)
+        }
+        case 1:
+            x = 99;        // is b still considered live here?
+            return x;
+        default:
+            return 0;
+    }
+}
+
+_Safe int v2(int c) {
+    int x = 1;
+    int *_Borrow m = &_Mut x;
+    switch (c) {
+        case 0:
+            use(m);
+            break;
+        case 1:
+            x = 99;        // m's borrow still live across cases?
+            break;
+    }
+    return x;
+}

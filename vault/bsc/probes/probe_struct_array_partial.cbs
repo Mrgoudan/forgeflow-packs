@@ -1,0 +1,13 @@
+// Probe: partial init of an array of struct-with-nonnull-field.
+// arr[1] is zero-initialized; arr[1].p would be NULL stored as _Nonnull.
+// Spec / source code (CheckInit) says NonnullInitByDefault should fire.
+//
+// Run: ./run.sh probes/probe_struct_array_partial.cbs
+
+struct HasPtr { int *_Nonnull p; };
+
+_Safe int test(int *_Nonnull np) {
+    struct HasPtr arr[2] = { {.p = np} };   // arr[1] zero-init → null _Nonnull?
+    (void)arr;
+    return 0;
+}

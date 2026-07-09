@@ -1,0 +1,13 @@
+<probe>:19:9: error: cannot use `b1` because it was mutably borrowed
+    use(b1);          // ERROR: b1's value is frozen by b2
+        ^
+<probe>:18:30: note: `*b1` is borrowed here
+    int *_Borrow b2 = &_Mut *b1;
+                             ^
+<probe>:19:9: error: cannot borrow `*b1` as mutable more than once at a time
+    use(b1);          // ERROR: b1's value is frozen by b2
+        ^
+<probe>:18:30: note: first mut borrow occurs here
+    int *_Borrow b2 = &_Mut *b1;
+                             ^
+2 errors generated.

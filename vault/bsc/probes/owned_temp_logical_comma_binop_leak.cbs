@@ -1,0 +1,18 @@
+// Probe: owned TEMPORARY as operand of a non-comparison binop (&&, ||, comma).
+// SemaExpr.cpp:16555 gates CheckTemporaryVarMemoryLeak to isComparisonOp(Opc);
+// DiagnoseOwnedPointerBinaryOp early-returns (no error) for BO_LAnd/LOr/Comma.
+// So the owned temp from mk() may be abandoned with no leak diagnostic -> valgrind.
+// EXPECT (if buggy): compiles clean, valgrind reports allocs > frees.
+#include "bishengc_safety.hbs"
+
+_Safe int *_Owned mk(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    *p = 7;
+    return p;
+}
+
+int main(void) {
+    int c = 1;
+    mk() && c;     // owned temp as LHS of && -> leaked?
+    return 0;
+}

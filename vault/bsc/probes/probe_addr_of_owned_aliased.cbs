@@ -1,0 +1,28 @@
+// Hypothesis: `int *_Owned * pp = &p;` aliases p through pp. The owner
+// tracker watches the local `p`. What happens if we modify the original
+// through the alias `*pp = ...;` — does the tracker see the change?
+//
+// Variants:
+//   v1 — `*pp = make()` should be treated as re-init/leak of p.
+//   v2 — *pp move via consume.
+//   v3 — *pp = nullptr in safe code; analyzer should track that p becomes Null.
+//
+// Run: ./run.sh probes/probe_addr_of_owned_aliased.cbs
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) { safe_free((void *_Owned)p); return 0; }
+
+_Safe int v1_alias_overwrite(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    int *_Owned *pp = &p;
+    _Unsafe { *pp = safe_malloc<int>(2); } // overwrite via alias — leaks old?
+    return consume(p);
+}
+
+_Safe int v2_alias_move(void) {
+    int *_Owned p = safe_malloc<int>(3);
+    int *_Owned *pp = &p;
+    _Unsafe { consume(*pp); }   // move via alias
+    return consume(p);   // should ERROR? Or not, since alias-move invisible to analyzer?
+}

@@ -1,0 +1,4 @@
+<probe>:25:22: error: use of moved value: `p`
+        r += consume(p);  // should ERROR if c==1, valid if c==2
+                     ^
+1 error generated.

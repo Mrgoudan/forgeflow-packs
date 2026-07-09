@@ -1,0 +1,36 @@
+// Probe: does the nullability state map (CurrStatusVD) leak narrowed state
+// across a goto back into a wider scope? If the narrow from `if (p)` block
+// survives past a goto out, *p in code after the join could be wrongly OK'd.
+//
+// Run:
+//   /run.sh probes/probe_null_state_thru_goto.cbs
+
+_Safe int v1(int *_Borrow _Nullable p, int c) {
+    if (p != nullptr) {
+        if (c) goto out;     // jumps out while p is narrowed Nonnull
+        return *p;
+    }
+    // here p must be Nullable (we entered the false branch of the outer if)
+    return *p;               // <-- should ERROR: p might be null on this path
+out:
+    return 0;
+}
+
+_Safe int v2(int *_Borrow _Nullable p) {
+    int i;
+    for (i = 0; i < 1; i++) {
+        if (p != nullptr) break;
+        // when we exit via i>=1, p was never narrowed (loop didn't execute
+        // its narrowing). After break, p could be either.
+    }
+    return *p;     // potentially-null deref — should ERROR
+}
+
+_Safe int v3(int *_Borrow _Nullable p) {
+    if (p == nullptr) return 0;
+    // p is now Nonnull. Test if state survives a do-while.
+    do {
+        if (*p == 0) return 0;     // OK: p Nonnull
+    } while (0);
+    return *p;     // OK: p still Nonnull
+}

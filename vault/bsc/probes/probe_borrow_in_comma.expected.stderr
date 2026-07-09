@@ -1,0 +1,7 @@
+<probe>:15:23: warning: left operand of comma operator has no effect [-Wunused-value]
+    int *_Borrow m = (0, &_Mut x);
+                      ^
+<probe>:26:14: warning: left operand of comma operator has no effect [-Wunused-value]
+    int r = (0, *m);     // use of m AFTER mutating x — should error
+             ^
+2 warnings generated.

@@ -1,0 +1,4 @@
+<probe>:17:30: error: use of moved value: `p`
+    return r + peek(&_Const *p);   // use after move — MUST error if tracked
+                             ^
+1 error generated.

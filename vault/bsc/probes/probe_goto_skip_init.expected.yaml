@@ -1,0 +1,250 @@
+---
+analysis: init-check
+function: "v1"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2, bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb3]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Initialized
+  - block: bb3
+    preds: [bb0, bb2]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: MaybeInit
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+diagnostics:
+  - kind: UseOfMaybeUninit
+    location: "<probe>:16:12"
+    block: bb3
+    name: "x"
+...
+---
+analysis: nullability-check
+function: "v1"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: []
+    succs: [0]
+    exit:
+  - block: 2
+    preds: [3, 4]
+    succs: [0]
+    entry:
+    exit:
+  - block: 3
+    preds: [5]
+    succs: [2]
+    entry:
+    exit:
+  - block: 4
+    preds: [5]
+    succs: [2]
+    entry:
+    exit:
+  - block: 5
+    preds: [6]
+    succs: [4, 3]
+    entry:
+    exit:
+  - block: 6
+    preds: []
+    succs: [5]
+    exit:
+diagnostics: []
+...
+---
+analysis: init-check
+function: "v2"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb2, bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb3]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb3]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Initialized
+  - block: bb3
+    preds: [bb0, bb2]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: MaybeInit
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (c)"
+          state: Initialized
+        - id: "_2 (x)"
+          state: Uninitialized
+diagnostics:
+  - kind: UseOfMaybeUninit
+    location: "<probe>:25:12"
+    block: bb3
+    name: "x"
+...
+---
+analysis: nullability-check
+function: "v2"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: []
+    succs: [0]
+    exit:
+  - block: 2
+    preds: [3, 4]
+    succs: [0]
+    entry:
+    exit:
+  - block: 3
+    preds: [5]
+    succs: [2]
+    entry:
+    exit:
+  - block: 4
+    preds: [5]
+    succs: [2]
+    entry:
+    exit:
+  - block: 5
+    preds: [6]
+    succs: [4, 3]
+    entry:
+    exit:
+  - block: 6
+    preds: []
+    succs: [5]
+    exit:
+diagnostics: []
+...

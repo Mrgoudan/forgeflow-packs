@@ -1,0 +1,25 @@
+// PROBE: IsSafePointerConversion (SemaBSCSafeZone.cpp:827-829) allows
+// `T *_Owned` -> `void *_Owned` for ANY T (no triviality check), unlike the
+// borrow->void branch (821-823) which requires SrcPointee->isTrivialDataType().
+//
+// Hypothesis: casting a NESTED owned pointer `int *_Owned *_Owned` to
+// `void *_Owned` and freeing it frees only the OUTER block; the inner
+// `int *_Owned` is leaked, yet the _Safe ownership analysis signs off
+// (outer consumed by the void cast, inner consumed into outer at malloc).
+//
+// Asymmetry baseline: the borrow analog (void *_Borrow of a non-trivial
+// borrow pointee) is REJECTED by the triviality gate.
+//
+// Distinct from F64 (outer pointer is RAW there; IsTrackedType blind).
+// Here the outer is _Owned-qualified, which IsTrackedType DOES track.
+
+#include "bishengc_safety.hbs"
+
+int main(void) {
+    int *_Owned inner = safe_malloc<int>(5);
+    // allocate a slot of type `int *_Owned`, moving inner into it
+    int *_Owned *_Owned outer = safe_malloc<int *_Owned>(inner);
+    // erase the nested-owned type to void and free: frees outer block only
+    safe_free((void *_Owned)outer);
+    return 0;
+}

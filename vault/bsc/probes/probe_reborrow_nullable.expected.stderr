@@ -1,0 +1,7 @@
+<probe>:10:18: error: nonnull pointer cannot be assigned by nullable pointer
+    int *_Borrow b = &_Mut *p;       // reborrow of *p — p may be null
+                 ^
+<probe>:16:23: error: conversion from type 'const int *_Borrow' to 'int *_Borrow' is forbidden in the safe zone
+    use((int *_Borrow)c);    // (just to use it; cast forbidden — alternate)
+                      ^
+2 errors generated.

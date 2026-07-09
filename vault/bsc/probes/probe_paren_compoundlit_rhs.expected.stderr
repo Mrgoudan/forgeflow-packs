@@ -1,0 +1,13 @@
+<probe>:23:5: error: cannot assign to `x` because it is borrowed
+    x = 99;                          // should ERROR: x is frozen via s.b
+    ^
+<probe>:22:31: note: `x` is borrowed here
+    s = (struct S){.b = &_Mut x};   // NO paren wrap; goes the special path
+                              ^
+<probe>:31:5: error: cannot assign to `x` because it is borrowed
+    x = 99;                          // does the borrow still get tracked?
+    ^
+<probe>:30:32: note: `x` is borrowed here
+    s = ((struct S){.b = &_Mut x}); // PAREN wrap — falls to generic path
+                               ^
+2 errors generated.

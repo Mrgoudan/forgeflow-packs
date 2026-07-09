@@ -1,0 +1,26 @@
+// Hypothesis: when a forward goto bypasses a local's declaration-with-init,
+// the merge at the goto target may incorrectly mark the local as Initialized
+// (because LocalStates merge copies Src's value when Dst lacks the entry,
+// instead of meeting with Uninitialized).
+//
+// Run: ./run.sh probes/probe_goto_skip_init.cbs
+
+// v1: forward goto skipping `int x = 5;` declaration with initializer.
+// On the goto path, x is in scope (lexically) but never assigned. The
+// merge at `end:` should see x as Uninitialized on the goto-side branch.
+// If the merge incorrectly says Initialized, `return x;` is silently OK.
+_Safe int v1(int c) {
+    if (c) goto end;
+    int x = 5;
+end:
+    return x;          // should ERROR if c=true path bypasses init
+}
+
+// v2: same but skip an int x; x = 5; pair (separate decl + assign).
+_Safe int v2(int c) {
+    int x;
+    if (c) goto end;
+    x = 5;
+end:
+    return x;          // should ERROR if c=true path bypasses assign
+}

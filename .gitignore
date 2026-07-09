@@ -12,8 +12,5 @@ run/
 __pycache__/
 *.pyc
 
-# method-asset vault (own git repo, nested) — not tracked by the pack repo
-/vault/
-
-# knowledge export (own git repo, nested) — private, not tracked by the pack repo
-/data/
+# vault/ (static knowledge) and data/ (DB knowledge export) are tracked as part
+# of THIS repo — folded in, not separate repos.

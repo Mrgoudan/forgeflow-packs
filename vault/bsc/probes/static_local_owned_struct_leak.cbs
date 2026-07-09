@@ -1,0 +1,21 @@
+// Probe: static-local owned-containing struct bypasses CheckOwnedOrIndirectOwnedType.
+// A file-scope `struct S g;` (S has int*_Owned) is REJECTED ("global variable
+// cannot be qualified by _Owned even indirectly"), but a `static struct S s;` local
+// is ACCEPTED — same static storage duration, same no-destructor problem.
+// Runtime test: assign owned across calls; static persistence -> overwrite -> leak.
+// EXPECT (if buggy): compiles clean, valgrind allocs > frees (untracked static owned).
+#include "bishengc_safety.hbs"
+
+struct S { int *_Owned p; };
+
+void f(void) {
+    static struct S s;          // ACCEPTED (gate gap) — global form is rejected
+    s.p = safe_malloc<int>(1);  // owned assigned to static field; prior value overwritten
+    *s.p = 1;
+}
+
+int main(void) {
+    f();
+    f();   // overwrites s.p from call 1 -> that allocation leaks; s.p never freed
+    return 0;
+}

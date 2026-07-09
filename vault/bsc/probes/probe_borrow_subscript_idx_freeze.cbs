@@ -1,0 +1,24 @@
+// Re-shaped probe: mutate x BEFORE arr[*b]. If the borrow checker visits
+// the index, x = 99 must error (b is live, x frozen). If it doesn't visit
+// the index, b has no uses, x is free, and the mutation is silently OK.
+//
+// Run: ./run.sh probes/probe_borrow_subscript_idx_freeze.cbs
+
+_Safe int test(void) {
+    int arr[3] = {10, 20, 30};
+    int x = 0;
+    int *_Borrow b = &_Mut x;
+    x = 99;             // should ERROR: b is live, b's last use is below
+    int v = arr[*b];
+    return v;
+}
+
+// Control: same shape but the use of b is via a plain function call (which IS visited).
+_Safe int peek(int *_Borrow p) { return *p; }
+_Safe int control(void) {
+    int x = 0;
+    int *_Borrow b = &_Mut x;
+    x = 99;             // should ERROR — b is live through peek(b) below
+    int v = peek(b);
+    return v;
+}

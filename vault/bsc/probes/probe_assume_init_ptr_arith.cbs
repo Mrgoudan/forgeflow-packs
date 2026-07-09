@@ -1,0 +1,24 @@
+// Hypothesis: SemaChecking.cpp:2310-2328 loops through MemberExpr and
+// UO_Deref but breaks silently on other AST kinds. Specifically a
+// BinaryOperator inside an &*-expression (pointer arithmetic) is not
+// diagnosed but may also fail to produce a valid Place in init analysis.
+//
+// Test variants:
+//   v1 — ensure_init param + `&*(p + 0)` — does this mark *p initialized?
+//   v2 — paren-wrap inside the deref: `&*(p)` should work (paren-safe)
+//   v3 — `&*((void *)0, p)` — comma inside the deref; Sema accepts but...
+//
+// Run: ./run.sh probes/probe_assume_init_ptr_arith.cbs
+
+_Safe void f1(int *_Borrow __attribute__((ensure_init)) p) {
+    _Unsafe { __assume_initialized(&*(p + 0)); }  // can we initialize via arith?
+}
+
+_Safe void f2(int *_Borrow __attribute__((ensure_init)) p) {
+    _Unsafe { __assume_initialized(&*(p)); }
+}
+
+_Safe void f3(int *_Borrow __attribute__((ensure_init)) p) {
+    int *_Borrow q = p;
+    _Unsafe { __assume_initialized(&*(0, q)); }  // comma inside deref
+}

@@ -1,0 +1,38 @@
+// Hypothesis: BorrowCheckerPrologue has no TransformGenericSelectionExpr,
+// so `_Generic(sel, T1: borrow_expr1, T2: borrow_expr2)` is NOT hoisted.
+// ActionExtract sees a GenericSelectionExpr with side-effect-bearing
+// children — and has no override for it → falls to VisitStmt (generic
+// child iteration), which doesn't know about borrow semantics.
+//
+// Expected if buggy: a borrow conflict via _Generic arms is NOT diagnosed
+// while the same conflict via direct expression IS diagnosed.
+//
+// Run: ./run.sh probes/probe_generic_borrow_skip.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int helper(const int *_Borrow p) { return *p; }
+
+// Baseline: direct mut+const conflict diagnosed (verified in probe #2).
+_Safe int baseline(void) {
+    int x = 0;
+    int *_Borrow b_mut = &_Mut x;
+    int v = helper(&_Const x);   // ERROR expected
+    return *b_mut + v;
+}
+
+// Probe: hide the &_Const x inside a _Generic arm. _Generic selector picks
+// the char arm, which contains the conflicting const-borrow.
+_Safe int probe_generic_arm(void) {
+    int x = 0;
+    int *_Borrow b_mut = &_Mut x;
+    int v = helper(_Generic((char)0, char: &_Const x, default: &_Const x));
+    return *b_mut + v;
+}
+
+// Probe: simpler — direct deref inside _Generic.
+_Safe int probe_generic_value(void) {
+    int x = 0;
+    int *_Borrow b_mut = &_Mut x;
+    int v = _Generic((char)0, char: *&_Const x, default: 0);  // re-borrow x const
+    return *b_mut + v;
+}

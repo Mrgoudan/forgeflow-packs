@@ -1,0 +1,30 @@
+// Probe: `continue` mid-loop with _Owned still live should leak.
+//
+// Run: ./run.sh probes/probe_continue_owned.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int v_continue_leak(int n) {
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int *_Owned p = safe_malloc<int>(1);
+        if (i == 3) {
+            continue;   // leaks p
+        }
+        safe_free((void *_Owned)p);
+        total += i;
+    }
+    return total;
+}
+
+_Safe int v_continue_after_free(int n) {
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        int *_Owned p = safe_malloc<int>(2);
+        safe_free((void *_Owned)p);
+        if (i == 3) {
+            continue;   // clean
+        }
+        total += i;
+    }
+    return total;
+}

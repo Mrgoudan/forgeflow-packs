@@ -1,0 +1,4 @@
+<probe>:20:18: error: nonnull pointer cannot be assigned by nullable pointer
+    int *_Borrow r = p ? p : &_Mut x;
+                 ^
+1 error generated.

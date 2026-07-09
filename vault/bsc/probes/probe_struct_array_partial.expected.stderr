@@ -1,0 +1,4 @@
+<probe>:10:19: error: type contains nonnull pointer must be properly initialized
+    struct HasPtr arr[2] = { {.p = np} };   // arr[1] zero-init → null _Nonnull?
+                  ^
+1 error generated.

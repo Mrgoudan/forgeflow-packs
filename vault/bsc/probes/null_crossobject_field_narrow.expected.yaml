@@ -1,0 +1,247 @@
+---
+analysis: init-check
+function: "g"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb3, bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+  - block: bb1
+    preds: [bb2, bb3]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+  - block: bb3
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (s1)"
+          state: Initialized
+        - id: "_2 (s2)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+      fields:
+        - path: "_1 (s1).0"
+          state: Initialized
+        - path: "_2 (s2).0"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "g"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+    exit:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+  - block: 1
+    preds: [3]
+    succs: [0]
+    entry:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+    exit:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+  - block: 2
+    preds: [3]
+    succs: [0]
+    entry:
+      fields:
+        - path: "s1..f"
+          nullability: NonNull
+        - path: "s2..f"
+          nullability: Nullable
+    exit:
+      fields:
+        - path: "s1..f"
+          nullability: NonNull
+        - path: "s2..f"
+          nullability: Nullable
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+    entry:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+    exit:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+  - block: 4
+    preds: []
+    succs: [3]
+    exit:
+      fields:
+        - path: "s1..f"
+          nullability: Nullable
+        - path: "s2..f"
+          nullability: Nullable
+diagnostics:
+  - kind: NullablePointerDereference
+    location: "<probe>:12:16"
+    block: 2
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "g"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 1
+  - kind: IfStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 2
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "g"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 1
+total_replacements: 3
+restored_nodes:
+  - kind: CompoundStmt
+    from_temp: CompoundStmt
+    loc: "10:39"
+  - kind: ImplicitCastExpr
+    from_temp: ImplicitCastExpr
+    loc: "11:9"
+  - kind: CompoundStmt
+    from_temp: CompoundStmt
+    loc: "11:15"
+...

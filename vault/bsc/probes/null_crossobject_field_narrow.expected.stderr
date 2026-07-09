@@ -1,0 +1,4 @@
+<probe>:12:16: error: nullable pointer cannot be dereferenced
+        return *s2.f;   // s2.f NOT narrowed (different base) -> expect REJECT
+               ^
+1 error generated.

@@ -1,0 +1,38 @@
+// EXPECT: pass
+// Test: _Owned _Nullable null-checked conditional consume
+// Question: does the leak checker correctly recognize that null _Owned _Nullable
+// on the null branch doesn't need to be freed (no leak FP)?
+//
+// Shape:
+//   int *_Owned _Nullable p = mk(); // might return null
+//   if(p!=nullptr) consume(p);
+//   // null branch: p is null, should NOT report leak
+//   // non-null branch: p consumed, no leak
+//
+// If analyzer incorrectly requires freeing null-owned on null branch → FP leak
+// If analyzer correctly recognizes null-owned = no-leak → clean
+
+void _Unsafe _Owner mk(int *_Nullable _Owned *out) {
+    // Simulate allocator that may return null
+    static int buf;
+    *out = &buf;
+    // Or return null:
+    // *out = nullptr;
+}
+
+void consume(int *_Owned p) {
+    // Just take ownership, no-op
+    (void)p;
+}
+
+int test(int c) {
+    int *_Owned _Nullable p = nullptr;
+    mk(&p);  // p might be null or non-null
+
+    if (p != nullptr) {
+        consume(p);  // non-null branch: transfer ownership
+    }
+    // null branch: p is null, no free needed
+
+    return 0;  // Should be clean - no leak on either path
+}

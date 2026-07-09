@@ -1,0 +1,35 @@
+// Hypothesis: SemaChecking.cpp:2310-2328 validates the argument of
+// `__assume_initialized(&...)` by walking only through MemberExpr and
+// UO_Deref. Anything else (ConditionalOperator, comma, etc.) is not
+// diagnosed but is also not understood by BSCIRInitAnalysis.cpp.
+//
+// If a paren or non-standard wrap reaches the init analysis as a Place
+// the analyzer can't interpret, `__assume_initialized` silently does
+// nothing — meaning the user thinks they marked something initialized,
+// but the analyzer still considers it uninitialized.
+//
+// Run: ./run.sh probes/probe_assume_init_cond.cbs
+
+struct S { int a; int b; };
+
+_Safe int v_baseline(void) {
+    struct S s;
+    _Unsafe { __assume_initialized(&s); }
+    return s.a + s.b;
+}
+
+// Conditional inside &-expression
+_Safe int v_cond(int c) {
+    struct S s1; struct S s2;
+    // Both s1 and s2 are uninitialized. We mark only one of them via cond.
+    _Unsafe { __assume_initialized(&(c ? s1 : s2)); }
+    // Now which is initialized? The compiler's check says... ?
+    return s1.a + s2.a;
+}
+
+// Comma wrap
+_Safe int v_comma(void) {
+    struct S s;
+    _Unsafe { __assume_initialized((void)0, &s); }
+    return s.a;
+}

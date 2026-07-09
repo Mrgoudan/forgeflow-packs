@@ -1,0 +1,10 @@
+<probe>:10:17: error: type of array cannot be qualified by '_Owned' 
+    int *_Owned arr[3];
+                ^
+<probe>:22:17: error: type of array cannot be qualified by '_Owned' 
+    int *_Owned arr[2];
+                ^
+<probe>:30:17: error: type of array cannot be qualified by '_Owned' 
+    int *_Owned arr[2];
+                ^
+3 errors generated.

@@ -1,0 +1,7 @@
+<probe>:25:36: error: cannot take the address of an rvalue of type 'struct S'
+    _Unsafe { __assume_initialized(&(c ? s1 : s2)); }
+                                   ^ ~~~~~~~~~~~
+<probe>:33:15: error: __assume_initialized requires '&' expression as argument
+    _Unsafe { __assume_initialized((void)0, &s); }
+              ^
+2 errors generated.

@@ -1,0 +1,74 @@
+---
+analysis: init-check
+function: "braceless"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (x)"
+          state: Initialized
+        - id: "_2 (r)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Initialized
+        - id: "_2 (r)"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb0]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Initialized
+        - id: "_2 (r)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (x)"
+          state: Initialized
+        - id: "_2 (r)"
+          state: Uninitialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "braceless"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [3, 2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: [4]
+    succs: [3, 1]
+    entry:
+    exit:
+  - block: 3
+    preds: [2]
+    succs: [1]
+    entry:
+    exit:
+  - block: 4
+    preds: []
+    succs: [2]
+    exit:
+diagnostics: []
+...

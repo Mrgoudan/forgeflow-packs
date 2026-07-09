@@ -1,0 +1,13 @@
+<probe>:23:5: error: cannot assign to `x` because it is borrowed
+    x = 99;            // ERROR expected: b still alive (used below)
+    ^
+<probe>:21:28: note: `x` is borrowed here
+    int *_Borrow b = &_Mut x;
+                           ^
+<probe>:32:5: error: cannot assign to `x` because it is borrowed
+    x = 99;            // ERROR expected: b still alive (used below)
+    ^
+<probe>:30:28: note: `x` is borrowed here
+    int *_Borrow b = &_Mut x;
+                           ^
+2 errors generated.

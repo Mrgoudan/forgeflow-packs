@@ -1,0 +1,33 @@
+// White-box probe: VisitArraySubscriptExpr (BSCOwnership.cpp ~L2044) recurses
+// only along the BASE chain, never visiting the INDEX expression. A move
+// hidden inside the index should be invisible to the move tracker → either
+// false-negative compile + runtime double-free, or compile-pass + leak.
+//
+// HOW TO REPRODUCE:
+//   ./repro/repro.sh probes/probe_subscript_index.cbs -run
+//   ./repro/repro.sh probes/probe_subscript_index.cbs -valgrind
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "[consume]\n"); }
+    safe_free((void *_Owned)p);
+    return 0;
+}
+
+_Safe int test_index(void) {
+    int arr[3] = {10, 20, 30};
+    int *_Owned p = safe_malloc<int>(7);
+    int r = arr[consume(p)];     // consume in subscript index — visited?
+    return r;
+    // p is moved by consume; compiler should see this and not require a
+    // safe_free at scope exit. If analyzer doesn't visit the index, it
+    // thinks p is still owned → compile error "memory leak" — OR if it
+    // thinks p was moved correctly, this compiles cleanly.
+}
+
+int main(void) {
+    int r;
+    _Unsafe { r = test_index(); fprintf(stderr,"r=%d\n",r); }
+    return 0;
+}

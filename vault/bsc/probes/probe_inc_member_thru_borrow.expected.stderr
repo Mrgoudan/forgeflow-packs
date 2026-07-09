@@ -1,0 +1,7 @@
+<probe>:13:7: error: cannot assign to `s.f` because it is borrowed
+    s.f = 99;          // should error if b is live here (b's last use is below)
+      ^
+<probe>:12:33: note: `s.f` is borrowed here
+    struct S *_Borrow b = &_Mut s;
+                                ^
+1 error generated.

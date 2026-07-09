@@ -1,0 +1,4 @@
+<probe>:23:29: error: invalid cast to `void * _Owned` of not all moved value: `outer`, *outer is _Owned
+    safe_free((void *_Owned)outer);
+                            ^
+1 error generated.

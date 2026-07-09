@@ -1,0 +1,16 @@
+// Probe: two _Owned _Nullable, both conditionally allocated. Free only one.
+// Compiler should detect that b leaks on the path where c is true.
+//
+// Run: ./run.sh probes/probe_nullable_pair_leak.cbs
+#include "bishengc_safety.hbs"
+
+_Safe void test(int c) {
+    int *_Owned _Nullable a = nullptr;
+    int *_Owned _Nullable b = nullptr;
+    if (c) {
+        a = safe_malloc<int>(1);
+        b = safe_malloc<int>(2);
+    }
+    if (a != nullptr) safe_free((void *_Owned)a);
+    // b is never freed → expected leak diagnostic on the c=true path
+}

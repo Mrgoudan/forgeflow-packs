@@ -1,0 +1,16 @@
+// Hypothesis: DefUse::VisitMemberExpr only visits the base when Action==Use.
+// For `++p->f` (Action=Def, isAssign=false), the base isn't visited → the
+// use of the borrow `p` in the increment-through-member isn't tracked → NLL
+// may end early.
+//
+// Run: ./run.sh probes/probe_inc_member_thru_borrow.cbs
+
+struct S { int f; };
+
+_Safe int test(void) {
+    struct S s = {.f = 0};
+    struct S *_Borrow b = &_Mut s;
+    s.f = 99;          // should error if b is live here (b's last use is below)
+    ++b->f;            // *only* use of b — is it tracked for NLL?
+    return s.f;
+}

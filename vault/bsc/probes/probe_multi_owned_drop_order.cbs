@@ -1,0 +1,45 @@
+// Cat 7 slice — order of frees when multiple _Owned locals reach end of scope.
+//
+// Each instrumented free prints the pointer's tag. We want to know:
+//   - Does BSC drop in declaration order, reverse order, or unspecified?
+//   - Does the same order hold for "moved-into-callee" vs "freed-locally"?
+//
+// HOW TO REPRODUCE:
+//   ./repro/repro.sh probes/probe_multi_owned_drop_order.cbs -run
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe void drop_tag(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "drop %d\n", *p); }
+    safe_free((void *_Owned)p);
+}
+
+// v1: three locals, manual free in declaration order
+_Safe void v1(void) {
+    _Unsafe { fprintf(stderr, "--v1--\n"); }
+    int *_Owned a = safe_malloc<int>(1);
+    int *_Owned b = safe_malloc<int>(2);
+    int *_Owned c = safe_malloc<int>(3);
+    drop_tag(a);
+    drop_tag(b);
+    drop_tag(c);
+}
+
+// v2: locals + ternary picks which one to free first
+_Safe void v2(int cond) {
+    _Unsafe { fprintf(stderr, "--v2 cond=%d--\n", cond); }
+    int *_Owned a = safe_malloc<int>(10);
+    int *_Owned b = safe_malloc<int>(20);
+    if (cond) {
+        drop_tag(a);
+        drop_tag(b);
+    } else {
+        drop_tag(b);
+        drop_tag(a);
+    }
+}
+
+int main(void) {
+    _Unsafe { v1(); v2(0); v2(1); }
+    return 0;
+}

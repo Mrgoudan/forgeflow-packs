@@ -1,0 +1,32 @@
+// Hypothesis: Sema's check for __assume_initialized's argument is lenient
+// (it just walks MemberExpr/UO_Deref and breaks on anything else with no
+// diagnostic). InitAnalysis sees the resulting Call and tries to extract
+// a Place; if the IR's Place differs from what the user intended, the
+// effect is silent — the analyzer thinks the memory remains uninitialized.
+//
+// Variants:
+//   v_baseline — direct `&*p` form; should satisfy ensure_init contract.
+//   v_paren    — `&*((p))` paren-nested; should also satisfy contract.
+//   v_comma    — `&*(0,p)` comma; Sema may accept but analysis may miss it.
+//
+// Run: ./run.sh probes/probe_assume_init_comma_form.cbs
+
+_Safe void v_baseline(int *_Borrow __attribute__((ensure_init)) p) {
+    _Unsafe { __assume_initialized(&*p); }
+    return;
+}
+
+_Safe void v_paren(int *_Borrow __attribute__((ensure_init)) p) {
+    _Unsafe { __assume_initialized(&*((p))); }
+    return;
+}
+
+_Safe void v_comma(int *_Borrow __attribute__((ensure_init)) p) {
+    _Unsafe { __assume_initialized(&*(0, p)); }
+    return;  // does the comma-form satisfy ensure_init?
+}
+
+_Safe void v_cond(int *_Borrow __attribute__((ensure_init)) p, int c) {
+    _Unsafe { __assume_initialized(&*(c ? p : p)); }
+    return;
+}

@@ -1,0 +1,28 @@
+// Probe: mixed _Safe / _Unsafe declaration where _Safe form adds _Owned.
+// At the safe call site, the _Owned param consumes the caller's ownership.
+// At the unsafe call site, the raw form is callable. Question: does the
+// compiler correctly switch tracking based on which decl matches the
+// calling context?
+//
+// Run: ./run.sh probes/probe_mixed_mode_owned.cbs
+
+#include "bishengc_safety.hbs"
+
+// Decl 1: _Unsafe — raw pointer, no ownership transfer.
+_Unsafe void take(int *p);
+
+// Decl 2: _Safe overload — adds _Owned (per spec, mixed-mode can add qualifier).
+_Safe void take(int *_Owned p);
+
+_Safe void take(int *_Owned p) { safe_free((void *_Owned)p); }
+
+_Safe void test_safe(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    take(p);            // _Safe overload chosen; p moved
+    // no free needed — moved into take
+}
+
+_Unsafe void test_unsafe(void) {
+    int *p = (int *)0;
+    take(p);            // _Unsafe overload chosen; no ownership
+}

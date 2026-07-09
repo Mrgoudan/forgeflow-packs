@@ -1,0 +1,39 @@
+// Hypothesis: ActionExtract::VisitArraySubscriptExpr (BSCBorrowChecker.cpp:421)
+// only visits the BASE of a subscript, not the INDEX. The helper at :781
+// recurses only into `SubExpr` (== ASE->getBase()). `ASE->getIdx()` is never
+// touched. So a borrow taken in the index expression is invisible to
+// ActionExtract's Sources tracking — no conflict diagnostic fires even when
+// the index re-borrows something already borrowed mutably.
+//
+// Run: ./run.sh probes/probe_subscript_index_borrow_conflict.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int helper(const int *_Borrow p) { return *p; }
+_Safe int helper_mut(int *_Borrow p) { return *p; }
+
+// Baseline: clearly-conflicting mut+const borrow at expression level (no subscript).
+_Safe int baseline_conflict(void) {
+    int x = 0;
+    int *_Borrow b_mut = &_Mut x;
+    int v = helper(&_Const x);      // ERROR expected: conflict with b_mut
+    return *b_mut + v;
+}
+
+// Probe: same conflict, but the conflicting const-borrow is hidden inside
+// the INDEX of a subscript expression.
+_Safe int probe_conflict_in_index(void) {
+    int arr[3] = {10, 20, 30};
+    int x = 1;
+    int *_Borrow b_mut = &_Mut x;
+    int v = arr[helper(&_Const x)]; // does ERROR fire?
+    return *b_mut + v;
+}
+
+// Stronger probe: index is a mut-borrow read.
+_Safe int probe_mut_in_index(void) {
+    int arr[3] = {10, 20, 30};
+    int x = 1;
+    int *_Borrow b_mut = &_Mut x;
+    int v = arr[helper(&_Mut x)];   // re-mut-borrow x while b_mut alive
+    return *b_mut + v;
+}

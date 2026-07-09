@@ -1,0 +1,7 @@
+<probe>:14:41: error: invalid operands to binary expression ('int *_Borrow' and 'int')
+    _Unsafe { __assume_initialized(&*(p + 0)); }  // can we initialize via arith?
+                                      ~ ^ ~
+<probe>:23:39: warning: left operand of comma operator has no effect [-Wunused-value]
+    _Unsafe { __assume_initialized(&*(0, q)); }  // comma inside deref
+                                      ^
+1 warning and 1 error generated.

@@ -1,0 +1,38 @@
+// Probe: designated init in struct/array, value is a move-side-effect call.
+//
+// HOW TO REPRODUCE:
+//   ./run.sh probes/probe_designated_init_move.cbs
+//   then build+run to verify consume is called.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "[consume]\n"); }
+    safe_free((void *_Owned)p);
+    return 42;
+}
+
+struct Pair { int a; int b; };
+
+_Safe int v1(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    struct Pair s = {.a = consume(p), .b = 99};
+    return s.a + s.b;
+}
+
+// Array variant with designators.
+_Safe int v2(void) {
+    int *_Owned p = safe_malloc<int>(2);
+    int arr[3] = {[0] = consume(p), [1] = 7};
+    return arr[0] + arr[1];
+}
+
+int main(void) {
+    int a, b;
+    _Unsafe {
+        a = v1();
+        b = v2();
+        fprintf(stderr, "v1=%d v2=%d\n", a, b);
+    }
+    return 0;
+}

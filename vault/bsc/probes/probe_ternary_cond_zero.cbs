@@ -1,0 +1,31 @@
+// Probe: `cond ? consume(p) : 99` with cond=0 (variable, not constant).
+// Per spec consume runs ONLY when cond is true. If TransformConditionalOperator
+// hoists the temp init before the IfStmt, consume runs unconditionally.
+//
+// HOW TO REPRODUCE:
+//   ./repro/repro.sh probes/probe_ternary_cond_zero.cbs -run
+//   Expected: consume NOT called when c=0; consume called when c=1.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) {
+    _Unsafe { fprintf(stderr, "[consume]\n"); }
+    safe_free((void *_Owned)p);
+    return 42;
+}
+
+_Safe int test(int c) {
+    int *_Owned p = safe_malloc<int>(7);
+    int r = c ? consume(p) : (safe_free((void *_Owned)p), 99);
+    return r;
+}
+
+int main(void) {
+    int r0, r1;
+    _Unsafe {
+        r0 = test(0);     // consume NOT called; manual free in else branch
+        r1 = test(1);     // consume called
+        fprintf(stderr, "r0=%d (want 99) r1=%d (want 42)\n", r0, r1);
+    }
+    return 0;
+}

@@ -1,0 +1,34 @@
+// Hypothesis: goto past an _Owned variable declaration — what does the
+// init analysis say? If the goto lands beyond the decl line but the
+// VarDecl's scope still covers the label target, the analyzer must
+// detect that the use after the label may not have been initialized.
+//
+// PROGRESS.md notes "goto forward over _Owned decl" already probed and
+// "gives leak diagnostic" — but does it also catch the use-uninit case?
+//
+// Variants:
+//   v1 — forward goto skipping init, then use → use-of-uninit expected
+//   v2 — forward goto skipping init, then assign → OK; subsequent use OK
+//
+// Run: ./run.sh probes/probe_goto_owned_skip_init.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int v1_use_skipped_init(int c) {
+    int *_Owned p;
+    if (c) goto here;
+    p = safe_malloc<int>(1);
+here:
+    return *p;     // ERROR expected: p uninitialized on goto path
+}
+
+_Safe int v2_assign_after_label(int c) {
+    int *_Owned p;
+    if (c) goto here;
+    p = safe_malloc<int>(2);
+    safe_free((void *_Owned)p);
+here:
+    p = safe_malloc<int>(3);
+    int r = *p;
+    safe_free((void *_Owned)p);
+    return r;
+}

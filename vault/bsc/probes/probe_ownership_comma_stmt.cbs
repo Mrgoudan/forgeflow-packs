@@ -1,0 +1,37 @@
+// Hypothesis: BSCOwnership.cpp:2614-2620 filters CFG statements to only:
+//   DeclStmt, CallExpr (standalone), BinaryOp that isAssignmentOp,
+//   UnaryOp that isIncrementDecrementOp, ReturnStmt.
+//
+// A statement that's a BinaryOperator with opcode BO_Comma is NOT an
+// assignment op, so it's filtered out — TF.Visit is never called on it.
+// If the CFG builder doesn't split the LHS of a comma into a separate
+// CFGStmt, the move buried in `(consume(p), 0);` is invisible to ownership
+// analysis. Result: p remains Owned → scope-exit destructor fires →
+// runtime double-free / use-after-free under valgrind.
+//
+// Run: ./run.sh probes/probe_ownership_comma_stmt.cbs
+//      ./repro/repro.sh -run probes/probe_ownership_comma_stmt.cbs
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) {
+    safe_free((void *_Owned)p);
+    return 0;
+}
+
+_Safe int v1_comma_stmt(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    (consume(p), 0);   // comma at statement level
+    // If ownership analysis missed the move, p is still Owned here.
+    // Scope-exit destructor will (silently) fire again — double-free.
+    return 0;
+}
+
+// v2 removed — compile-time move tracking confirmed; focus on runtime path.
+
+int main(void) {
+    int r;
+    _Unsafe { r = v1_comma_stmt(); }
+    printf("v1 = %d\n", r);
+    return 0;
+}

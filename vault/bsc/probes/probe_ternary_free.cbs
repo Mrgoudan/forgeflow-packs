@@ -1,0 +1,21 @@
+// Probe: cast ternary inside safe_free. At compile time, the analyzer should
+// see "only one branch frees" and reject (or emit leak on the other branch).
+//
+// HOW TO REPRODUCE:
+//   ./run.sh probes/probe_ternary_free.cbs
+//   If compile passes, run with -valgrind: the unfreed branch leaks.
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int test(int c) {
+    int *_Owned p = safe_malloc<int>(1);
+    int *_Owned q = safe_malloc<int>(2);
+    safe_free((void *_Owned)(c ? p : q));   // only one is freed per path
+    return 0;
+}
+
+int main(void) {
+    int r;
+    _Unsafe { r = test(0); fprintf(stderr,"%d\n",r); }
+    return 0;
+}

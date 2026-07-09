@@ -1,0 +1,19 @@
+<probe>:18:28: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = helper(&_Const x);      // ERROR expected: conflict with b_mut
+                           ^
+<probe>:17:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+<probe>:28:32: error: cannot borrow `x` as immutable because it is also borrowed as mutable
+    int v = arr[helper(&_Const x)]; // does ERROR fire?
+                               ^
+<probe>:27:32: note: mutable borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+<probe>:37:30: error: cannot borrow `x` as mutable more than once at a time
+    int v = arr[helper(&_Mut x)];   // re-mut-borrow x while b_mut alive
+                             ^
+<probe>:36:32: note: first mut borrow occurs here
+    int *_Borrow b_mut = &_Mut x;
+                               ^
+3 errors generated.

@@ -1,0 +1,20 @@
+// Probe: BSCNullCheckInfo::operator|= (||) must INTERSECT narrowing sets, so
+// `if (p || q)` narrows NEITHER p nor q. Deref of p in the then-branch must be
+// REJECTED (only one of p,q is guaranteed non-null).
+// EXPECT: REJECT on `*p` (sound). If ACCEPTED -> HIGH false-negative (null deref).
+// Control: `if (p && q)` SHOULD narrow both -> `*p` accepted.
+#include "bishengc_safety.hbs"
+
+_Safe int or_case(int *_Borrow _Nullable p, int *_Borrow _Nullable q) {
+    if (p || q) {
+        return *p;   // p NOT guaranteed non-null -> expect REJECT
+    }
+    return 0;
+}
+
+_Safe int and_case(int *_Borrow _Nullable p, int *_Borrow _Nullable q) {
+    if (p && q) {
+        return *p;   // both narrowed -> expect ACCEPT (control)
+    }
+    return 0;
+}

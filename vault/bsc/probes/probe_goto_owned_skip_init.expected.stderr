@@ -1,0 +1,6 @@
+<probe>:21:13: error: use of possibly uninitialized value: `p`
+    return *p;     // ERROR expected: p uninitialized on goto path
+            ^
+<probe>:21:13: error: use of possibly uninitialized value: `p`
+<probe>:21:13: error: memory leak of value: `p`
+3 errors generated.

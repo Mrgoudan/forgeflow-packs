@@ -1,0 +1,13 @@
+<probe>:14:13: error: cannot use `x` because it was mutably borrowed
+    take(b, x);            // reads x while b borrows it — should ERROR
+            ^
+<probe>:13:28: note: `x` is borrowed here
+    int *_Borrow b = &_Mut x;
+                           ^
+<probe>:21:13: error: cannot use `x` because it was mutably borrowed
+    int v = x;             // explicit read of x — should also ERROR
+            ^
+<probe>:20:28: note: `x` is borrowed here
+    int *_Borrow b = &_Mut x;
+                           ^
+2 errors generated.

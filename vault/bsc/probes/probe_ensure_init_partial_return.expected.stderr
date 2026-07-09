@@ -1,0 +1,4 @@
+<probe>:12:1: error: '*p' may not be initialized on all paths at return in __attribute__((ensure_init)) function
+}
+^
+1 error generated.

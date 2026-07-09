@@ -1,0 +1,36 @@
+// Probe: an array OF _Owned pointers — `int *_Owned arr[3]`. How is
+// move tracking applied per element? Does the analyzer track per-index?
+//
+// Run: ./run.sh probes/probe_array_of_owned.cbs
+#include "bishengc_safety.hbs"
+
+_Safe int consume(int *_Owned p) { safe_free((void *_Owned)p); return 0; }
+
+_Safe int v_array_partial_free(void) {
+    int *_Owned arr[3];
+    arr[0] = safe_malloc<int>(1);
+    arr[1] = safe_malloc<int>(2);
+    arr[2] = safe_malloc<int>(3);
+    consume(arr[0]);
+    // arr[1] and arr[2] still owned — leaks?
+    consume(arr[1]);
+    consume(arr[2]);
+    return 0;
+}
+
+_Safe int v_array_use_after_move(void) {
+    int *_Owned arr[2];
+    arr[0] = safe_malloc<int>(1);
+    arr[1] = safe_malloc<int>(2);
+    consume(arr[0]);
+    return consume(arr[0]);  // use after move on element 0
+}
+
+_Safe int v_array_partial_leak(void) {
+    int *_Owned arr[2];
+    arr[0] = safe_malloc<int>(1);
+    arr[1] = safe_malloc<int>(2);
+    consume(arr[0]);
+    // arr[1] leaks at scope end
+    return 0;
+}

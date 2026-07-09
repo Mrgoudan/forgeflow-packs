@@ -1,0 +1,4 @@
+<probe>:10:51: error: conversion from type 'int *_Borrow' to 'const void *_Borrow' is forbidden in the safe zone
+    const void *_Borrow cv = (const void *_Borrow)b; // B: add-const + void widening
+                                                  ^
+1 error generated.

@@ -1,0 +1,4 @@
+<probe>:17:25: error: type of array cannot be qualified by '_Owned' 
+    int *_Owned *_Owned arr[1];
+                        ^
+1 error generated.

@@ -1,0 +1,16 @@
+<probe>:18:20: error: use of moved value: `p`
+    return consume(p);   // ERROR expected
+                   ^
+<probe>:23:18: error: incompatible function pointer types initializing 'fp_consume_t' (aka 'int (*)(int *_Owned)') with an expression of type '_Safe int (*)(int *_Owned)'
+    fp_consume_t fp = &consume;
+                 ^    ~~~~~~~~
+<probe>:24:5: error: _Unsafe function call is forbidden in the safe zone
+    fp(p);
+    ^
+<probe>:25:12: error: _Unsafe function call is forbidden in the safe zone
+    return fp(p);        // ERROR expected (if tracked through fnptr)
+           ^
+<probe>:30:18: error: incompatible function pointer types initializing 'fp_consume_t' (aka 'int (*)(int *_Owned)') with an expression of type '_Safe int (*)(int *_Owned)'
+    fp_consume_t fp = &consume;
+                 ^    ~~~~~~~~
+5 errors generated.

@@ -1,0 +1,38 @@
+// Hypothesis: a function call via function pointer with an `_Owned`
+// argument should still track the move. BSCOwnership.cpp's VisitCallExpr
+// processes CE->arg_begin/end, so the call shape (direct vs indirect)
+// shouldn't matter. But the CFG/Sema may treat the callee differently —
+// worth checking.
+//
+// Run: ./run.sh probes/probe_fnptr_owned_move.cbs
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int consume(int *_Owned p) { safe_free((void *_Owned)p); return 0; }
+
+typedef int (*fp_consume_t)(int *_Owned);
+
+_Safe int v_direct_use_after_move(void) {
+    int *_Owned p = safe_malloc<int>(1);
+    consume(p);
+    return consume(p);   // ERROR expected
+}
+
+_Safe int v_fnptr_use_after_move(void) {
+    int *_Owned p = safe_malloc<int>(2);
+    fp_consume_t fp = &consume;
+    fp(p);
+    return fp(p);        // ERROR expected (if tracked through fnptr)
+}
+
+_Safe int v_fnptr_leak(void) {
+    int *_Owned p = safe_malloc<int>(3);
+    fp_consume_t fp = &consume;
+    (void)fp;
+    return 0;             // ERROR expected: p leaked
+}
+
+int main(void) {
+    _Unsafe { v_fnptr_leak(); }
+    return 0;
+}

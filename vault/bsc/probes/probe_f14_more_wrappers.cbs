@@ -1,0 +1,33 @@
+// F14 follow-up: probe more wrapper shapes around a bare make() statement.
+// If any silently compiles, that's another leak surface.
+//
+// Run: ./run.sh probes/probe_f14_more_wrappers.cbs
+//      ./repro/repro.sh probes/probe_f14_more_wrappers.cbs -valgrind
+#include "bishengc_safety.hbs"
+#include <stdio.h>
+
+_Safe int *_Owned make(void) {
+    _Unsafe { fprintf(stderr, "[make]\n"); }
+    return safe_malloc<int>(7);
+}
+
+// v1: void cast — does it bypass the check?
+_Safe void v1(void) { (void)make(); }
+
+// v2: assign to a temp _Bool to "use" the value
+_Safe void v2(void) { _Bool b = (_Bool)make(); (void)b; }
+
+// v3: relational comparison — uses the result, but doesn't consume.
+_Safe void v3(void) { int z = (make() == nullptr); (void)z; }
+
+// v4: arithmetic — same, uses the value as if comparable to nullptr.
+//     make() is _Owned int*; cannot do arithmetic. skipped.
+
+// v5: pass to a function expecting _Bool (auto-truthify).
+_Safe void take_bool(_Bool b) { (void)b; }
+_Safe void v5(void) { take_bool(make()); }    // make() coerced to bool via != nullptr
+
+int main(void) {
+    _Unsafe { v1(); v2(); v3(); v5(); }
+    return 0;
+}

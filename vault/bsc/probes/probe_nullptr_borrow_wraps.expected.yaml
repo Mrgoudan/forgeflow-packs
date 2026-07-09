@@ -1,0 +1,453 @@
+---
+analysis: init-check
+function: "v_baseline_nullable"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb3, bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb2, bb3]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+  - block: bb3
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v_baseline_nullable"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 1
+    preds: [3]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 2
+    preds: [3]
+    succs: [0]
+    entry:
+      vars:
+        - var: "p"
+          nullability: NonNull
+    exit:
+      vars:
+        - var: "p"
+          nullability: NonNull
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+    entry:
+      vars:
+        - var: "p"
+          nullability: Nullable
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+  - block: 4
+    preds: []
+    succs: [3]
+    exit:
+      vars:
+        - var: "p"
+          nullability: Nullable
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "v_baseline_nullable"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 1
+    preds: [3]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 2
+    preds: [3]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 4
+    preds: []
+    succs: [3]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v_baseline_nullable"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 1
+  - kind: DeclStmt
+    count: 1
+  - kind: IfStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 2
+...
+---
+analysis: borrow-check
+function: "v_baseline_nullable"
+actions:
+  - point: BB1/1
+    action: "ActionUse:  use()"
+  - point: BB1/2
+    action: "ActionStorageDead: p"
+  - point: BB2/1
+    action: "ActionUse:  use(*p, )"
+  - point: BB2/2
+    action: "ActionStorageDead: p"
+  - point: BB3/1
+    action: "ActionInit: p = use()"
+  - point: BB3/2
+    action: "ActionNoop"
+regions:
+  - name: "'region_0"
+    index: 0
+    capped: false
+    points: ["BB2/1", "BB3/2"]
+constraints: []
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: []
+  - block: 2
+    live_at_entry: ["p"]
+  - block: 3
+    live_at_entry: []
+  - block: 4
+    live_at_entry: []
+loans: []
+cfg_edges:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+  - block: 1
+    preds: [3]
+    succs: [0]
+  - block: 2
+    preds: [3]
+    succs: [0]
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+  - block: 4
+    preds: []
+    succs: [3]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v_baseline_nullable"
+seen_ast_kinds:
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: init-check
+function: "v_paren_to_nonnull"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+  - block: bb1
+    preds: [bb0]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v_paren_to_nonnull"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics:
+  - kind: NonnullAssignedByNullable
+    location: "<probe>:20:18"
+    block: 1
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v_paren_to_nonnull"
+seen_ast_kinds:
+  - kind: DeclStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v_paren_to_nonnull"
+seen_ast_kinds: []
+...
+---
+analysis: init-check
+function: "v_cast_to_nonnull"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Uninitialized
+        - id: "_3"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+  - block: bb1
+    preds: [bb0]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Initialized
+        - id: "_1 (p)"
+          state: Uninitialized
+        - id: "_2"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+diagnostics: []
+...
+---
+analysis: nullability-check
+function: "v_cast_to_nonnull"
+blocks:
+  - block: 0
+    preds: [1]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [2]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: []
+    succs: [1]
+    exit:
+diagnostics:
+  - kind: NullableCastNonnull
+    location: "<probe>:25:22"
+    block: 1
+  - kind: NonnullAssignedByNullable
+    location: "<probe>:25:18"
+    block: 1
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "v_cast_to_nonnull"
+seen_ast_kinds:
+  - kind: DeclStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 1
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "v_cast_to_nonnull"
+seen_ast_kinds: []
+...

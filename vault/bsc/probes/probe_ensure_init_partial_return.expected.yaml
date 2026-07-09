@@ -1,0 +1,303 @@
+---
+analysis: init-check
+function: "f"
+blocks:
+  - block: bb0
+    preds: []
+    succs: [bb1, bb2]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+      ensure_init_deref:
+        - param: "*_1 (p)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+      ensure_init_deref:
+        - param: "*_1 (p)"
+          state: Uninitialized
+  - block: bb1
+    preds: [bb0, bb2]
+    succs: []
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+        - id: "_4"
+          state: MaybeInit
+      ensure_init_deref:
+        - param: "*_1 (p)"
+          state: MaybeInit
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: MaybeInit
+        - id: "_4"
+          state: MaybeInit
+      ensure_init_deref:
+        - param: "*_1 (p)"
+          state: MaybeInit
+  - block: bb2
+    preds: [bb0]
+    succs: [bb1]
+    entry:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Uninitialized
+        - id: "_4"
+          state: Uninitialized
+      ensure_init_deref:
+        - param: "*_1 (p)"
+          state: Uninitialized
+    exit:
+      locals:
+        - id: "_0 (_0)"
+          state: Uninitialized
+        - id: "_1 (p)"
+          state: Initialized
+        - id: "_2 (c)"
+          state: Initialized
+        - id: "_3"
+          state: Initialized
+        - id: "_4"
+          state: Uninitialized
+      ensure_init_deref:
+        - param: "*_1 (p)"
+          state: Uninitialized
+diagnostics:
+  - kind: EnsureInitMaybeNotInit
+    location: "<probe>:12:1"
+    name: "p"
+...
+---
+analysis: nullability-check
+function: "f"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+    exit:
+  - block: 1
+    preds: [3]
+    succs: [0]
+    entry:
+    exit:
+  - block: 2
+    preds: [3]
+    succs: [0]
+    entry:
+    exit:
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+    entry:
+    exit:
+  - block: 4
+    preds: []
+    succs: [3]
+    exit:
+diagnostics: []
+...
+---
+analysis: owned-check
+function: "f"
+blocks:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 1
+    preds: [3]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 2
+    preds: [3]
+    succs: [0]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+    entry:
+      empty: true
+    exit:
+      empty: true
+  - block: 4
+    preds: []
+    succs: [3]
+    exit:
+      empty: true
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: prologue
+function: "f"
+seen_ast_kinds:
+  - kind: CallExpr
+    count: 1
+  - kind: CompoundStmt
+    count: 2
+  - kind: IfStmt
+    count: 1
+  - kind: ReturnStmt
+    count: 2
+...
+---
+analysis: borrow-check
+function: "f"
+actions:
+  - point: BB1/1
+    action: "ActionNoop"
+  - point: BB1/2
+    action: "ActionStorageDead: c"
+  - point: BB1/3
+    action: "ActionStorageDead: p"
+  - point: BB2/1
+    action: "ActionAssign: _borrowck_tmp_0 RegionName { 'region_1 } = *p RegionName { 'region_0 }"
+  - point: BB2/2
+    action: "ActionAssign: _borrowck_tmp_1 RegionName { 'region_3 } = _borrowck_tmp_0 RegionName { 'region_1 }"
+  - point: BB2/3
+    action: "ActionUse:  use(_borrowck_tmp_1, )"
+  - point: BB2/4
+    action: "ActionStorageDead: _borrowck_tmp_1"
+  - point: BB2/5
+    action: "ActionStorageDead: _borrowck_tmp_0"
+  - point: BB2/6
+    action: "ActionNoop"
+  - point: BB2/7
+    action: "ActionStorageDead: c"
+  - point: BB2/8
+    action: "ActionStorageDead: p"
+  - point: BB3/1
+    action: "ActionNoop"
+regions:
+  - name: "'region_0"
+    index: 0
+    capped: false
+    points: ["BB2/1", "BB2/2", "BB2/3", "BB3/1"]
+  - name: "'region_1"
+    index: 1
+    capped: false
+    points: ["BB2/2", "BB2/3"]
+  - name: "'region_2"
+    index: 2
+    capped: false
+    points: ["BB2/2", "BB2/3"]
+  - name: "'region_3"
+    index: 3
+    capped: false
+    points: ["BB2/3"]
+  - name: "'region_4"
+    index: 4
+    capped: false
+    points: ["BB2/3"]
+constraints:
+  - sub_index: 0
+    sup_index: 2
+    point: BB2/2
+  - sub_index: 1
+    sup_index: 4
+    point: BB2/3
+  - sub_index: 2
+    sup_index: 1
+    point: BB2/2
+  - sub_index: 4
+    sup_index: 3
+    point: BB2/3
+liveness:
+  - block: 0
+    live_at_entry: []
+  - block: 1
+    live_at_entry: []
+  - block: 2
+    live_at_entry: ["p"]
+  - block: 3
+    live_at_entry: ["p"]
+  - block: 4
+    live_at_entry: ["p"]
+loans:
+  - point: BB2/1
+    path: "**p"
+    kind: Mut
+    region: ["BB2/2", "BB2/3"]
+  - point: BB2/2
+    path: "*_borrowck_tmp_0"
+    kind: Mut
+    region: ["BB2/3"]
+  - point: BB2/3
+    path: "*_borrowck_tmp_1"
+    kind: Mut
+    region: []
+cfg_edges:
+  - block: 0
+    preds: [1, 2]
+    succs: []
+  - block: 1
+    preds: [3]
+    succs: [0]
+  - block: 2
+    preds: [3]
+    succs: [0]
+  - block: 3
+    preds: [4]
+    succs: [2, 1]
+  - block: 4
+    preds: []
+    succs: [3]
+diagnostics: []
+...
+---
+analysis: prologue-epilogue
+phase: epilogue
+function: "f"
+seen_ast_kinds:
+  - kind: CompoundStmt
+    count: 1
+...

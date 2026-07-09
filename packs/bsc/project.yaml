@@ -15,6 +15,12 @@ tools:
 # the Conductor: region leasing / method bandit / cooldown / auto-swap) —
 # and wires them to BSC's repo, probes, prompts, and knowledge vault. The
 # hunt/review packs name nothing BSC-specific; everything BSC lives here.
+# park recovery: a parked task waits its class cadence (agent_limit = 30 min,
+# the GLM quota window; agent_backend = 5 min) and then, for backend-dependent
+# classes, the daemon health-probes this endpoint and only restarts the task if
+# it answers. env: reads the URL from the sourced secrets (one source of truth,
+# no endpoint duplicated here). forge_auth never auto-unparks — fix the token.
+agent_health_url: "env:ANTHROPIC_BASE_URL"
 workflows: [workflows]
 blocks:
   - ../review/blocks/reviewblocks.py

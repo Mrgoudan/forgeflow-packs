@@ -93,7 +93,6 @@ def fix_verify(ctx, task, prev):
     probe = res.get("probe") or ""
     expect_error = bool(res.get("expect_error"))
     sd = Path(ctx["_step_dir"])
-    sd.mkdir(parents=True, exist_ok=True)          # engine doesn't pre-create it
     tools = ctx.get("_tools")
 
     staged = [{"op": "transition", "finding_id": r["id"], "to_state": "verifying",

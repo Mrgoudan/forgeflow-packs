@@ -386,9 +386,7 @@ def forge_report_finding(ctx, task, prev):
         if row:
             egress_id = row["id"]
         else:
-            bp = Path(ctx["_step_dir"])
-            bp.mkdir(parents=True, exist_ok=True)
-            body_path = bp / "comment.md"
+            body_path = Path(ctx["_step_dir"]) / "comment.md"
             body_path.write_text(body)
             egress_id = conn.execute(
                 "INSERT INTO egress(kind, target, body_sha, body_path, task_id)"

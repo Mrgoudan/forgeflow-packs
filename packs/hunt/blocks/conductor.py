@@ -470,7 +470,6 @@ def hunt_verify_candidate(ctx, task, prev):
 
     clang = template(ctx["clang"], {})
     sd = Path(ctx["_step_dir"])
-    sd.mkdir(parents=True, exist_ok=True)          # engine doesn't pre-create it
     probe = sd / "cand.cbs"
     probe.write_text(finding["probe"])
     inc = ctx.get("include")
@@ -533,7 +532,6 @@ def hunt_merge_exploit(ctx, task, prev):
     clang = template(ctx["clang"], {})
     inc = template(ctx["include"], {}) if ctx.get("include") else None
     sd = Path(ctx["_step_dir"])
-    sd.mkdir(parents=True, exist_ok=True)          # engine doesn't pre-create it
     staged, filed, folded = [], 0, 0
     for i, v in enumerate(variants):
         if v.get("verdict") == "FOLDED":

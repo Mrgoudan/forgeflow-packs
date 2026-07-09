@@ -113,15 +113,43 @@ No model or network needed — a deterministic fake agent and a local fake
 forge stand in, so the full pipelines (refutation, severity gate, degraded
 mode, manual-wins, the must-update gate, AI-mandatory parking) run offline.
 
-## Quick start (BSC reviewer)
+## Getting started (from a fresh clone)
 
-`bsc/project.yaml` is real (not a template). Just add your two secrets:
+**Prerequisites:** `git`, `python3` (3.8+), a C++ toolchain with `cmake` +
+`ninja` (to build the BiSheng C `clang`), and the `claude` CLI on `PATH` (the
+agent backend). A GLM endpoint/token and a gitcode token are needed only when
+you actually run agents / post — a dry run needs neither.
 
 ```bash
-$EDITOR config/secrets.env         # replace the two REPLACE_* lines
-./packs/bsc/run-bsc.sh validate                        # prove it loads
-FORGE_WRITE=0 ./packs/bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (nothing posted)
+# 1. the engine (generic) — clone it to ~/bsd/forgeflow, or point $ENGINE at it
+git clone https://github.com/Mrgoudan/forgeflow ~/bsd/forgeflow
+
+# 2. this repo (the packs)
+git clone https://github.com/Mrgoudan/forgeflow-packs ~/bsd/forgeflow-packs
+cd ~/bsd/forgeflow-packs
+
+# 3. the reviewed compiler — a BiSheng C llvm-project checkout, built once.
+#    This is the ONE machine-specific path: edit packs/bsc/project.yaml
+#    `paths.repo` if you clone it somewhere other than ~/bsd/llvm-project-dup.
+git clone <your BiSheng-C llvm-project>  ~/bsd/llvm-project-dup
+#    …then build clang per the BSC project's instructions; forgeflow only needs
+#    the resulting  ~/bsd/llvm-project-dup/build/bin/clang  to exist.
+
+# 4. secrets (skip for an offline dry run)
+cp config/secrets.env.example config/secrets.env && chmod 600 config/secrets.env
+$EDITOR config/secrets.env         # GLM endpoint + token, and the gitcode token
+
+# 5. prove it loads, then launch the control room
+./packs/bsc/run-bsc.sh validate                        # every path/ref resolves
+FORGE_WRITE=0 ./packs/bsc/run-bsc.sh dash              # dry run → http://127.0.0.1:8787
 ```
 
-Backup / transfer the accumulated knowledge (the DB → the `data` repo):
-`./packs/bsc/run-bsc.sh export` then commit `data/`; `import` rebuilds a DB.
+> `validate` checks that `paths.repo` **exists**, so step 3 must be done first.
+> Drop `FORGE_WRITE=0` (the launcher defaults it to `1`) once you're ready to
+> post for real. To review a *different* gitcode project, change the forge URLs
+> + `review_remote` in `packs/bsc/project.yaml`.
+
+**Seed the knowledge (optional):** the campaign's accumulated findings/methods
+ship in `data/` (git). `./packs/bsc/run-bsc.sh import` rebuilds a DB from it;
+`export` writes it back after a run. Without importing, you start from the
+`vault/` seed (`run-bsc.sh port`).

@@ -1563,7 +1563,7 @@ Root cause: `lowerStmt` dispatch chain does not handle `AttributedStmt`; falls t
 - exemplars: F18 (BO_Add/BO_Sub fallthrough), this fold (CompoundLiteralExpr)
 
 ## 2026-05-21 bsc-exploiter blast-radius for clang/lib/Sema/BSC/SemaDeclBSC.cpp:85-101 (HasDiffBorrorOrOwnedQualifiers)
-- shape: original minimal_repro — `void f(void (*cb)(int *_Borrow)); void f(void (*cb)(int *));` → FOLDED (compile clean, exit 0; expected conflict diagnostic) — `/home/ziruichen/bsd/autotest/sem_tests/repro/F53_redecl_fnptr_param_borrow_owned_skipped.cbs`
+- shape: original minimal_repro — `void f(void (*cb)(int *_Borrow)); void f(void (*cb)(int *));` → FOLDED (compile clean, exit 0; expected conflict diagnostic) — `autotest/sem_tests/repro/F53_redecl_fnptr_param_borrow_owned_skipped.cbs`
 - shape: variant 1 — `void f(void (*cb)(int *_Owned)); void f(void (*cb)(int *));` _Owned buried in fnptr param → FOLDED (exit 0, silently merged) — `/tmp/exploiter_variant.Kvdoi0.cbs`
 - shape: variant 2 — `void f(void (*outer)(void (*inner)(int *_Borrow))); void f(void (*outer)(void (*inner)(int *)));` nested fnptr-of-fnptr qualifier TWO levels deep → FOLDED (exit 0) — `/tmp/exploiter_variant.16Nzxb.cbs`
 - shape: variant 3 — `void f(void (*cb)(int *_Borrow _ArrayElem)); void f(void (*cb)(int *));` _ArrayElem qualifier buried in fnptr param → FOLDED (exit 0) — `/tmp/exploiter_variant.O983Pz.cbs`
@@ -7046,7 +7046,7 @@ NET: no-new-pattern. Path-MERGE granularity (mergeVD/mergeFP/mergeDPVD + conditi
   (Ownership analyzer's VisitInitListExpr (BSCOwnership:2433) iterates inits() not fields(), so no analogous OOB.)
 
 ## 2026-06-24 — crash-hunt via assertion-enabled build (in-scope boundary constructs) — no assert found
-- Used the COMPATIBLE assert build ~/bsd/llvm-project/build/bin/clang (ziruichen12138 @88c4eedd — the
+- Used the COMPATIBLE assert build ~/bsd/llvm-project/build/bin/clang (<fork> @88c4eedd — the
   session-start `ninja clang` rebuild finished; was @7b963eaa) with ITS OWN libcbs header tree.
 - CAVEAT discovered: a separate enterprise fork (do-not-use) is INCOMPATIBLE with the dup tree's
   bishengc_safety.hbs (8 header parse errors: __take_from_raw undeclared, empty struct = "incomplete type",

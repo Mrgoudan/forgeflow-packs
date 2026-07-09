@@ -4,13 +4,13 @@
 <probe>:12:15: error: incompatible _Owned types, cannot cast 'int *_Owned' to 'void *_Owned _Nullable'
     safe_free(arr[0]);
               ^~~~~~
-/home/ziruichen/bsd/llvm-project-dup/libcbs/src/bishengc_safety/bishengc_safety.hbs:26:46: note: passing argument to parameter 'p' here
+{repo}/libcbs/src/bishengc_safety/bishengc_safety.hbs:26:46: note: passing argument to parameter 'p' here
 _Safe void safe_free(void * _Nullable _Owned p);
                                              ^
 <probe>:13:15: error: incompatible _Owned types, cannot cast 'int *_Owned' to 'void *_Owned _Nullable'
     safe_free(arr[1]);
               ^~~~~~
-/home/ziruichen/bsd/llvm-project-dup/libcbs/src/bishengc_safety/bishengc_safety.hbs:26:46: note: passing argument to parameter 'p' here
+{repo}/libcbs/src/bishengc_safety/bishengc_safety.hbs:26:46: note: passing argument to parameter 'p' here
 _Safe void safe_free(void * _Nullable _Owned p);
                                              ^
 3 errors generated.

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -23,12 +24,47 @@ KNOWLEDGE = ["code_objects", "findings", "transitions", "patterns", "methods",
              "lessons", "egress", "watermarks"]
 
 
+def _scrub_rules(pack_dir):
+    """Machine-specific absolute paths -> portable tokens, so the exported
+    dataset carries no personal path and rebuilds anywhere. Longest prefix
+    first; a generic /home/<user>/ catch-all runs last."""
+    rules = []
+    if pack_dir:
+        try:
+            from forgeflow import config
+            p = config.load_pack(pack_dir)
+            repo = (p.paths or {}).get("repo")
+            if repo:
+                rules.append((repo, "{repo}"))
+            packroot = str(Path(p.root).parent.parent)   # .../forgeflow-packs
+            rules.append((packroot, "{pack}"))
+        except Exception:
+            pass
+    rules.append((str(Path.home()), "~"))
+    rules.append((Path.home().name, "<user>"))           # bare OS username anywhere
+    rules.sort(key=lambda kv: -len(kv[0]))               # specific before $HOME/user
+    return rules
+
+
+def _scrub(v, rules):
+    if isinstance(v, str):
+        v = re.sub(r"/tmp/claude-\d+/[^\"\s]*", "<tmp>", v)  # ephemeral scratch paths
+        for old, new in rules:
+            if old and old in v:
+                v = v.replace(old, new)
+        v = re.sub(r"/home/[^/\"\s]+", "~", v)           # any stray /home/<user>
+    return v
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="run/state/forgeflow.db")
     ap.add_argument("--out", default="data/knowledge")
+    ap.add_argument("--pack", default=None,
+                    help="pack dir — used to tokenize its repo/pack paths out of the export")
     a = ap.parse_args()
 
+    rules = _scrub_rules(a.pack)
     c = sqlite3.connect(a.db)
     c.row_factory = sqlite3.Row
     have = {r[0] for r in c.execute(
@@ -54,7 +90,7 @@ def main():
         n = 0
         with (out / (t + ".jsonl")).open("w") as fh:
             for row in c.execute("SELECT * FROM %s ORDER BY %s" % (t, order)):
-                fh.write(json.dumps({k: row[k] for k in cols},
+                fh.write(json.dumps({k: _scrub(row[k], rules) for k in cols},
                                     ensure_ascii=False, sort_keys=True) + "\n")
                 n += 1
         manifest[t] = n

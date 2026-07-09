@@ -136,6 +136,6 @@ counts this table.
 | 33 | 2026-06-16 | review  | §1 docs: a fix that changes what the spec *permits* (not just renames a diagnostic) must update the relevant User Manual chapter, not only `bsc-errors.md` | #862 (dengxy2020) |
 | 34 | 2026-06-06 | review  | §1 safe-zone matrix: never flip a matrix cell globally to fix a target-specific issue — gate on actual type widths; keep matrix doc-comment strictly in sync with runtime guards | #864 (dengxy2020) |
 | 35 | 2026-06-08 | review  | §1 diagnostics: target-/width-dependent checks need target-conditional diagnostic text; a universal-sounding message is wrong when rejection is conditional on platform | #864 (dengxy2020) |
-| 36 | 2026-06-10 | review  | §3 BSCIR lowering changes require a dump-IR test under `clang/test/BSC/BSCIR/` with FileCheck on the emitted IR structure | #873 (ziruichen12138) |
+| 36 | 2026-06-10 | review  | §3 BSCIR lowering changes require a dump-IR test under `clang/test/BSC/BSCIR/` with FileCheck on the emitted IR structure | #873 (<fork>) |
 
 <!-- Add a numbered row per learning; keep `type` in column 4 for learnings.sh. -->

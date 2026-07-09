@@ -53,6 +53,8 @@ def cap_of(kind):
 _DEFAULTS = {"paused": "0", "cap_hunt": "1", "cap_review": "1", "cap_fix": "1",
              "hunt_continuous": "0", "hunt_base": ""}
 POLL_S, FIX_S, HUNT_S = 300, 30, 60          # auto-trigger intervals
+UNPARK_S = 300                               # park-recovery probe cadence
+                                             # (per-class throttle lives in queue)
 
 
 def init_control(conn):
@@ -84,7 +86,7 @@ class Daemon:
         self.stop = threading.Event()
         self.last_error = None
         self.executed = 0
-        self._t = {"poll": 0.0, "fix": 0.0, "hunt": 0.0}
+        self._t = {"poll": 0.0, "fix": 0.0, "hunt": 0.0, "unpark": 0.0}
 
     def tick(self):
         """The daemon's own clock = the auto-triggers. Review polls for new
@@ -93,6 +95,16 @@ class Daemon:
         (so a disabled/`paused` capability never auto-fires)."""
         now, c, subs = time.monotonic(), self.conn, self.eng.subscriptions
         nonce = int(time.time())          # keeps repeat triggers from deduping
+        # park recovery: reuse the engine's per-class cadence + health-gated
+        # unpark (agent_limit probes every 30 min, restarts only if GLM answers;
+        # forge_auth never auto-recovers). The dashboard runs its OWN loop, so
+        # it must drive this itself — engine.run()'s tick never executes here.
+        if now - self._t["unpark"] > UNPARK_S:
+            self._t["unpark"] = now
+            try:
+                self.eng._unpark_tick()
+            except Exception as e:
+                self.last_error = "unpark: %s" % e
         emits = []
         if flag(c, "cap_review") == "1" and now - self._t["poll"] > POLL_S:
             self._t["poll"] = now

@@ -128,8 +128,8 @@ FORGE_WRITE=0 ./run-bsc.sh dash
 
 The **DB is the living source of truth**; `export` projects its knowledge into
 **chunked, git-friendly files** — one `<table>.jsonl` per table (one row per
-line, stable order) plus `_schema.sql` — under its own `data/` git repo (like
-`vault/`). Chunking (not truncation) keeps growth append-shaped: a new finding
+line, stable order) plus `_schema.sql` — under the tracked `data/` subfolder of
+this repo. Chunking (not truncation) keeps growth append-shaped: a new finding
 adds a *line* to `findings.jsonl`, so git diffs stay tiny and no single file
 balloons. Operational/regenerable tables (events/tasks/runs/embeddings) are
 omitted; the engine re-creates them empty on open.

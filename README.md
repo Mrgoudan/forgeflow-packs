@@ -5,22 +5,21 @@ The engine stays generic; everything domain- and machine-specific lives
 here as **packs** — a pack is one folder of YAML workflows + plugin blocks +
 prompts + schemas + config.
 
-## The forgeflow ecosystem (4 repos)
+## The forgeflow ecosystem (2 repos)
 
-Cleanly separated so each has one job — generic engine, domain packs, static
-knowledge, and the live campaign state:
+The generic engine, and this pack repo — which carries everything BSC-specific,
+**including the knowledge** (vault + data folded in as tracked subfolders):
 
 | repo | holds | GitHub | gitcode |
 |---|---|---|---|
 | **forgeflow** | the generic, domain-agnostic engine | [`Mrgoudan/forgeflow`](https://github.com/Mrgoudan/forgeflow) | `ziruichen12138/forgeflow` |
-| **forgeflow-packs** | *this repo* — the BSC packs (workflows/blocks/prompts/config) | [`Mrgoudan/forgeflow-packs`](https://github.com/Mrgoudan/forgeflow-packs) | `bisheng_c_language_dep/FORGEFLOW-PACKS` |
-| **forgeflow-vault** | static knowledge: differential probes, defect catalogue, compiler-internals notes, method bench | [`Mrgoudan/forgeflow-vault`](https://github.com/Mrgoudan/forgeflow-vault) | `bisheng_c_language_dep/FORGEFLOW-VAULT` |
-| **forgeflow-data** | the living DB's knowledge, exported as chunked JSONL (git-friendly, rebuildable) | [`Mrgoudan/forgeflow-data`](https://github.com/Mrgoudan/forgeflow-data) | `bisheng_c_language_dep/FORGEFLOW-DATA` |
+| **forgeflow-packs** | *this repo* — BSC packs + `vault/` (static knowledge) + `data/` (DB export) | [`Mrgoudan/forgeflow-packs`](https://github.com/Mrgoudan/forgeflow-packs) | `bisheng_c_language_dep/FORGEFLOW-PACKS` |
 
-`vault/` and `data/` are **separate git repos nested in this tree** (gitignored
-here, like the engine). `vault` = the static seed; `data` = a projection of the
-live `run/` DB (`run-bsc.sh export`/`import`). Secrets live only in `config/`
-and are never in any repo.
+`vault/` (static seed: probes, defect catalogue, compiler-internals notes,
+method bench) and `data/` (the live `run/` DB's knowledge, exported as chunked
+JSONL via `run-bsc.sh export`/`import`) are **tracked subfolders of this repo** —
+not separate repos. Secrets live only in `config/` (gitignored) and are never
+committed.
 
 ## Three kinds of thing, kept separate
 
@@ -62,8 +61,8 @@ forgeflow-packs/
 │   ├── secrets.env           your keys (gitignored, chmod 600)
 │   └── secrets.env.example    template
 ├── run/                      shared runtime: db, worktrees, outputs (gitignored)
-├── vault/                    static BSC knowledge — own git repo (gitignored here)
-├── data/                     DB knowledge export — own git repo (gitignored here)
+├── vault/                    static BSC knowledge: probes, notes, guide, findings (tracked)
+├── data/                     DB knowledge export: chunked JSONL (tracked)
 │
 ├── packs/
 │   ├── review/               generic PR-review pack (forge-agnostic library)

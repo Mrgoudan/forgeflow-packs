@@ -4,8 +4,16 @@
 name: bsc
 
 paths:
-  repo:       /home/ziruichen/bsd/llvm-project-dup            # reviewed repo; PR heads fetched here
-  code_notes: /home/ziruichen/bsd/forgeflow-packs/vault/bsc/code_notes
+  # the ONE machine-specific path: where the reviewed llvm clone lives. `~`
+  # expands per-user; edit only if your clone is elsewhere. Everything below is
+  # RELATIVE to this pack dir (packs/bsc) — resolved to absolute at load — so the
+  # whole pack is portable to any checkout location, no hardcoded home paths.
+  repo:       ~/bsd/llvm-project-dup            # reviewed repo; PR heads fetched here
+  code_notes: ../../vault/bsc/code_notes
+  vault_dir:  ../../vault/bsc                   # anchor for the vault params below
+  probes:     ../../vault/bsc/probes
+  scripts:    scripts                           # packs/bsc/scripts (build/refresh)
+  data_root:  ../../run                         # runtime cache root (probe baselines)
 
 tools:
   git: { path: git, version_cmd: ["--version"] }
@@ -69,11 +77,11 @@ params:
   # the knowledge vault: the campaign's accumulated findings/playbook/methods/
   # chains. bsc.ingest_seed ports these into native db rows (dedup catalogue,
   # defect classes, the method bench + bandit priors, call-chain surfaces).
-  vault: /home/ziruichen/bsd/forgeflow-packs/vault/bsc
+  vault: "{paths.vault_dir}"
   # the compiler-engineering guide (how to edit each BSC subsystem + the
   # recurring change shapes). Injected into the fixer/explorer via the
   # bsc_compiler_guide provider — distinct from the manual (language spec).
-  compiler_guide: /home/ziruichen/bsd/forgeflow-packs/vault/bsc/knowledge/KNOWLEDGE.md
+  compiler_guide: "{paths.vault_dir}/knowledge/KNOWLEDGE.md"
 
   # user manual = ground truth, inside the reviewed repo
   manual_path: clang/docs/BSC/BiShengCLanguageUserManual.md
@@ -103,15 +111,15 @@ params:
   # so the sweep tests PR behavior. Detached checkout mutates paths.repo's
   # working tree — paths.repo SHOULD be a dedicated review clone, not a dev
   # tree; the build leaving it at the PR is fine there.
-  build_cmd: ["/home/ziruichen/bsd/forgeflow-packs/packs/bsc/scripts/build_clang.sh",
+  build_cmd: ["{paths.scripts}/build_clang.sh",
               "{paths.repo}", "{paths.repo}/build", "{payload.head_sha}"]
   # base maintenance: refresh_base pulls the base branch, rebuilds base clang,
   # and records the probe baseline under baseline_root/<base_rev>. Reviews
   # diff their PR clang against that cache — run refresh_base when base moves.
-  refresh_cmd: ["/home/ziruichen/bsd/forgeflow-packs/packs/bsc/scripts/refresh_base.sh",
+  refresh_cmd: ["{paths.scripts}/refresh_base.sh",
                 "{paths.repo}", "{paths.repo}/build", "{payload.base}"]
-  baseline_root: /home/ziruichen/bsd/forgeflow-packs/run/probe_baselines
-  probes_dir: /home/ziruichen/bsd/forgeflow-packs/vault/bsc/probes
+  baseline_root: "{paths.data_root}/probe_baselines"
+  probes_dir: "{paths.probes}"
   probe_cmd: ["{paths.repo}/build/bin/clang", "-fsyntax-only",
               "-Wno-nullability-completeness",
               "-I", "{paths.repo}/libcbs/src/bishengc_safety", "{probe}"]

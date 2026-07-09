@@ -16,6 +16,7 @@ PACK_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENGINE="${ENGINE:-$HOME/bsd/forgeflow}"
 SECRETS="${FORGEFLOW_SECRETS:-$PACK_DIR/../../config/secrets.env}"
 FF_ROOT="${FF_ROOT:-$PACK_DIR/../../run}"
+mkdir -p "$PACK_DIR/../../run"        # paths.data_root anchor must exist at load (validate)
 
 if [ ! -f "$SECRETS" ]; then
   echo "missing $SECRETS — cp ../secrets.env.example $PACK_DIR/secrets.env; fill it; chmod 600" >&2

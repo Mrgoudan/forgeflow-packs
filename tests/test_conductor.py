@@ -300,6 +300,8 @@ params:
   pr_create_url: "http://x/pulls"
   issue_url: "http://x/issues"
   issue_repo: "r"
+  issue_comment_url: "http://x/issues"
+  issue_title: "t"
 """.format(base=base, bsc=bsc, rev=rev, hunt=hunt, fix=fix, fa=FAKE_AGENT,
            ex=explorer_cli, sc=sc, clang=fake_clang))
     return pack

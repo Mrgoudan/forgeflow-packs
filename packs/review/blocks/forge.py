@@ -267,15 +267,39 @@ def forge_open_pr(ctx, task, prev):
                                    "evidence": {"pr_number": number, "branch": branch}}]}
 
 
-@block("forge.open_issue", "egress",
-       {"opened", "archived", "duplicate", "skipped", "leak_blocked",
+def _forge_post(url, data, auth, timeout_s):
+    """POST json with configured auth. Returns (status, parsed_json | None)."""
+    headers = {"Content-Type": "application/json"}
+    if auth and auth.get("token_ref"):
+        token = load_secrets().get("FORGE_TOKEN_%s" % auth["token_ref"])
+        if not token:
+            return 401, None
+        if auth.get("style") == "query":
+            sep = "&" if "?" in url else "?"
+            url = "%s%s%s=%s" % (url, sep, auth.get("name", "access_token"), token)
+        else:
+            headers[auth.get("name", "PRIVATE-TOKEN")] = token
+    req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"),
+                                 headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except OSError:
+        return 599, None
+
+
+@block("forge.report_finding", "egress",
+       {"commented", "archived", "duplicate", "skipped", "leak_blocked",
         "forge_auth", "forge_server", "timeout"},
-       required_params={"issue_url"})
-def forge_open_issue(ctx, task, prev):
-    """File a CONFIRMED bug as a forge ISSUE. Egress choke point: leak-scan ->
-    egress row (dedup on the finding key, so a re-confirm never double-files)
-    -> forge POST (only with FORGE_WRITE=1, else archived). On success records
-    the issue number back on the finding."""
+       required_params={"issue_url", "issue_comment_url"})
+def forge_report_finding(ctx, task, prev):
+    """Report a CONFIRMED bug as a COMMENT under ONE umbrella issue (one issue
+    per campaign, one comment per finding). The umbrella issue is created on
+    first use and its number kept in watermark 'bughunt.issue'. Egress choke
+    point: leak-scan -> egress row (dedup on the finding key) -> forge POST
+    (only with FORGE_WRITE=1, else archived)."""
     conn = ctx["_conn"]
     payload = task.get("payload") or {}
     key = payload.get("finding_key") or payload.get("finding")
@@ -290,22 +314,21 @@ def forge_open_issue(ctx, task, prev):
     except ValueError:
         ev = {}
     probe = (ev.get("probe") or "").strip()
-    title = "[BSC] %s" % (r["title"] or key)
     body = "\n".join([
-        "**Severity:** %s   **Root-cause class:** `%s`" % (r["severity"] or "?", r["pattern"] or "—"),
-        "**Finding key:** `%s`" % key, "",
+        "### %s" % (r["title"] or key), "",
+        "**Severity:** %s   **Root-cause class:** `%s`   **Key:** `%s`"
+        % (r["severity"] or "?", r["pattern"] or "—", key), "",
         "**What the oracle observed:** %s (compiler exit %s)"
         % (ev.get("why", "—"), ev.get("exit_code", "?")), "",
         "**Minimal repro (`.cbs`):**", "```c", probe or "(probe not recorded)", "```", "",
-        "_Filed automatically by forgeflow bug-hunt; the repro was verified against base clang._"])
+        "_Verified against base clang by forgeflow bug-hunt._"])
     for pattern in ctx.get("deny_patterns", ()):
         if re.search(pattern, body):
             return "leak_blocked", {"pattern": pattern}
-    url = _tpl(ctx["issue_url"], ctx, task, prev)
-    target = "issue:%s" % key
+    target = "comment:%s" % key
     body_sha = sha256_text(body)
     with ensure_tx(conn):
-        row = conn.execute("SELECT id, forge_id FROM egress WHERE kind='issue'"
+        row = conn.execute("SELECT id, forge_id FROM egress WHERE kind='issue_comment'"
                            " AND target=?", (target,)).fetchone()
         if row and row["forge_id"]:
             return "duplicate", {"egress_id": row["id"], "forge_id": row["forge_id"]}
@@ -314,44 +337,49 @@ def forge_open_issue(ctx, task, prev):
         else:
             bp = Path(ctx["_step_dir"])
             bp.mkdir(parents=True, exist_ok=True)
-            body_path = bp / "issue.md"
+            body_path = bp / "comment.md"
             body_path.write_text(body)
             egress_id = conn.execute(
                 "INSERT INTO egress(kind, target, body_sha, body_path, task_id)"
-                " VALUES ('issue',?,?,?,?)", (target, body_sha, str(body_path),
-                                              task["id"])).lastrowid
+                " VALUES ('issue_comment',?,?,?,?)",
+                (target, body_sha, str(body_path), task["id"])).lastrowid
     if os.environ.get("FORGE_WRITE") != "1":
         return "archived", {"egress_id": egress_id, "finding": key}
 
-    headers = {"Content-Type": "application/json"}
     auth = ctx.get("auth")
-    if auth and auth.get("token_ref"):
-        token = load_secrets().get("FORGE_TOKEN_%s" % auth["token_ref"])
-        if not token:
-            return "forge_auth", {"detail": "FORGE_TOKEN_%s missing" % auth["token_ref"]}
-        if auth.get("style") == "query":
-            sep = "&" if "?" in url else "?"
-            url = "%s%s%s=%s" % (url, sep, auth.get("name", "access_token"), token)
-        else:
-            headers[auth.get("name", "PRIVATE-TOKEN")] = token
-    data = {"title": title, "body": body}
-    if ctx.get("issue_repo"):                         # gitee/gitcode: repo in body
-        data["repo"] = template(ctx["issue_repo"], {})
-    req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"),
-                                 headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=ctx["_timeout_s"]) as resp:
-            iss = json.loads(resp.read().decode("utf-8") or "{}")
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            return "forge_auth", {"status": e.code}
-        return "forge_server", {"status": e.code}
-    except OSError as e:
-        return "forge_server", {"detail": str(e)}
-    number = iss.get("number") or iss.get("iid") or iss.get("id")
+    # umbrella issue: create once, remember its number
+    wm = conn.execute("SELECT cursor FROM watermarks WHERE scope='bughunt.issue'").fetchone()
+    umbrella = wm["cursor"] if wm else None
+    if not umbrella:
+        idata = {"title": template(ctx.get("issue_title",
+                 "[BSC] forgeflow bug-hunt — confirmed findings"), {}),
+                 "body": "Umbrella issue for forgeflow bug-hunt. Every confirmed "
+                         "bug (verified against base clang) is posted as a comment below."}
+        if ctx.get("issue_repo"):
+            idata["repo"] = template(ctx["issue_repo"], {})
+        st, iss = _forge_post(_tpl(ctx["issue_url"], ctx, task, prev), idata,
+                              auth, ctx["_timeout_s"])
+        if st in (401, 403):
+            return "forge_auth", {"status": st}
+        if st >= 400 or not iss:
+            return "forge_server", {"status": st}
+        umbrella = str(iss.get("number") or iss.get("iid") or iss.get("id"))
+        with ensure_tx(conn):
+            conn.execute("INSERT OR REPLACE INTO watermarks(scope, cursor)"
+                         " VALUES ('bughunt.issue', ?)", (umbrella,))
+    # post the finding as a comment on the umbrella issue
+    curl = "%s/%s/comments" % (template(ctx["issue_comment_url"], {}).rstrip("/"),
+                               umbrella)
+    st, cm = _forge_post(curl, {"body": body}, auth, ctx["_timeout_s"])
+    if st in (401, 403):
+        return "forge_auth", {"status": st, "issue": umbrella}
+    if st >= 400:
+        return "forge_server", {"status": st, "issue": umbrella}
+    cid = str((cm or {}).get("id") or "")
     with ensure_tx(conn):
-        conn.execute("UPDATE egress SET forge_id=? WHERE id=?", (str(number), egress_id))
-        ev["issue_number"] = number
+        conn.execute("UPDATE egress SET forge_id=? WHERE id=?",
+                     (cid or umbrella, egress_id))
+        ev["issue_number"] = umbrella
         conn.execute("UPDATE findings SET detail=? WHERE id=?",
                      (json.dumps(ev), r["id"]))
-    return "opened", {"finding": key, "issue_number": number}
+    return "commented", {"finding": key, "issue": umbrella, "comment_id": cid}

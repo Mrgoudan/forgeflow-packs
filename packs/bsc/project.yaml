@@ -116,10 +116,14 @@ params:
   prs_url:     "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls?state=open"
   comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls/{payload.request.pr}/comments"
   pr_create_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls"
-  # confirmed bugs are filed as issues here (gitee/gitcode v5: owner-level
-  # endpoint, repo in the POST body). Web view:
-  # https://gitcode.com/bisheng_c_language_dep/llvm-project/issues
+  # confirmed bugs are reported as COMMENTS under ONE umbrella issue (created
+  # once; number cached in watermark bughunt.issue). issue_url creates the
+  # umbrella (gitee/gitcode v5: owner-level endpoint, repo in the POST body);
+  # issue_comment_url posts each finding as a comment ({issue} = umbrella no.).
+  # Web view: https://gitcode.com/bisheng_c_language_dep/llvm-project/issues
   issue_url:   "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/issues"
+  issue_comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/issues"
+  issue_title: "[BSC] forgeflow bug-hunt — confirmed findings"
   issue_repo:  "llvm-project"
   forge_auth:  { token_ref: MAIN, style: query, name: access_token }
   deny_patterns:

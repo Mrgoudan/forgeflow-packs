@@ -9,13 +9,15 @@ emits: []
 
 steps:
   - name: file
-    block: forge.open_issue
+    block: forge.report_finding
     timeout_s: 120
     params:
       issue_url: "{pack.issue_url}"
+      issue_comment_url: "{pack.issue_comment_url}"
+      issue_title: "{pack.issue_title}"
       issue_repo: "{pack.issue_repo}"
       auth: "{pack.forge_auth}"
       deny_patterns: "{pack.deny_patterns}"
-    outcomes: { opened: done, archived: done, duplicate: done, skipped: done,
+    outcomes: { commented: done, archived: done, duplicate: done, skipped: done,
                 leak_blocked: done, forge_auth: parked, forge_server: parked,
                 timeout: parked }

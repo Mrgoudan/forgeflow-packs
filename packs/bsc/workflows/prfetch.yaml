@@ -9,7 +9,10 @@ steps:
   - name: fetch
     block: forge.fetch_pr_head
     timeout_s: 300
-    params: { repo: "{paths.repo}" }
+    params:
+      repo: "{paths.repo}"
+      remote: "{pack.review_remote}"      # `bsc` upstream (no `origin` in repo)
+      ref: "{pack.pr_head_ref}"           # refs/merge-requests/<n>/head
     outcomes: { ok: hand, error: failed, timeout: failed }
 
   - name: hand

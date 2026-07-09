@@ -183,6 +183,8 @@ params:
   issue_repo: "r"
   issue_comment_url: "http://x/issues"
   issue_title: "t"
+  review_remote: "bsc"
+  pr_head_ref: "refs/merge-requests/{{payload.pr}}/head"
 """.format(repo=repo, notes=notes, probes=probes, bsc=(PACKS / "packs" / "bsc"),
            rev=(PACKS / "packs" / "review"), hunt=(PACKS / "packs" / "hunt"),
            fix=(PACKS / "packs" / "fix"), cli=cli, manual=MANUAL, pinned=pinned))

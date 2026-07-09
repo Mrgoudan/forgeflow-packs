@@ -302,6 +302,8 @@ params:
   issue_repo: "r"
   issue_comment_url: "http://x/issues"
   issue_title: "t"
+  review_remote: "bsc"
+  pr_head_ref: "refs/merge-requests/{{payload.pr}}/head"
 """.format(base=base, bsc=bsc, rev=rev, hunt=hunt, fix=fix, fa=FAKE_AGENT,
            ex=explorer_cli, sc=sc, clang=fake_clang))
     return pack

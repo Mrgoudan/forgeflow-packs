@@ -121,6 +121,12 @@ params:
   # shape). Confirm field names on the first dry-run poll.
   prs_url:     "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls?state=open"
   comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls/{payload.request.pr}/comments"
+  # PR-head fetch: paths.repo has no `origin`; the upstream is the `bsc` remote.
+  # gitcode exposes every PR head as refs/merge-requests/<n>/head there (its
+  # analogue of GitHub's pull/<n>/head) — fork-agnostic, so it beats fetching a
+  # source-branch name. (Confirmed: mr/5/head == PR#5 head.)
+  review_remote: bsc
+  pr_head_ref:   "refs/merge-requests/{payload.pr}/head"
   pr_create_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/pulls"
   # confirmed bugs are reported as COMMENTS under ONE umbrella issue (created
   # once; number cached in watermark bughunt.issue). issue_url creates the

@@ -53,4 +53,20 @@ if [ "${1:-}" = "port" ]; then
   exec python3 "$PACK_DIR/port.py" --root "$FF_ROOT" --pack "$PACK_DIR" "$@"
 fi
 
+# db <-> git: export the DB's knowledge to a versionable SQL text file (the
+# living DB is the source of truth; this is its portable projection), and
+# rebuild a DB from one. Default location is the sibling data/ dir (its own
+# repo, like vault/). FF_DATA overrides.
+DATA_DIR="${FF_DATA:-$PACK_DIR/../../data}"
+if [ "${1:-}" = "export" ]; then
+  shift
+  exec python3 "$PACK_DIR/scripts/db_export.py" \
+    --db "$FF_ROOT/state/forgeflow.db" --out "$DATA_DIR/forgeflow.knowledge.sql" "$@"
+fi
+if [ "${1:-}" = "import" ]; then
+  shift
+  exec python3 "$PACK_DIR/scripts/db_import.py" \
+    --db "$FF_ROOT/state/forgeflow.db" --sql "$DATA_DIR/forgeflow.knowledge.sql" "$@"
+fi
+
 exec python3 -m forgeflow --root "$FF_ROOT" --pack "$PACK_DIR" "$@"

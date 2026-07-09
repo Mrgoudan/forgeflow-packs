@@ -124,6 +124,24 @@ FORGE_WRITE=0 ./run-bsc.sh dash
 ./run-bsc.sh port                      # one-time vault → db knowledge seed
 ```
 
+### Backup / transfer (DB ↔ git)
+
+The **DB is the living source of truth**; `export` projects its knowledge into a
+small, diffable SQL text file (`data/forgeflow.knowledge.sql`, ~660 KB) that
+lives in its own `data/` git repo (like `vault/`). Operational/regenerable
+tables (events/tasks/runs/embeddings) are omitted; the engine re-creates them
+empty on open.
+
+```bash
+./run-bsc.sh export     # DB knowledge  -> data/forgeflow.knowledge.sql (commit it)
+./run-bsc.sh import     # rebuild run/state/forgeflow.db from that dump (--force to overwrite)
+```
+
+Transfer = commit + push `data/` on one machine, clone + `import` on the other.
+**`data/` is PRIVATE** — it holds security findings + reviewed-code snippets (no
+secrets: verified the GLM key / forge token never appear in it). Encrypt before
+pushing to any remote (git-crypt or age).
+
 Stop the daemon with `fuser -k 8787/tcp` (kills by port). To halt work without
 killing, hit **⏸ pause** in the dashboard (or set `paused=1` in `dash_control`).
 

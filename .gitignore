@@ -14,3 +14,6 @@ __pycache__/
 
 # method-asset vault (own git repo, nested) — not tracked by the pack repo
 /vault/
+
+# knowledge export (own git repo, nested) — private, not tracked by the pack repo
+/data/

@@ -1,4 +1,4 @@
-"""The auto-fix loop — drive a triaged finding through the engine's finding
+"""The auto-fix loop — drive a triaged item through the engine's item
 state machine to an open PR:
 
     triaged --prepare--> fixing --verify(green)--> verifying --open_pr--> pr_open
@@ -6,11 +6,11 @@ state machine to an open PR:
 
 Every state change goes through the engine's transition() (enforced,
 audited) via staged {op: transition} ops. The blocks are generic over the
-finding's SOURCE (a hunt finding and a review finding fix the same way);
+item's SOURCE (a hunt item and a review item fix the same way);
 the build/probe commands are pack config, so nothing here names a compiler.
 
 - fix.prepare   triaged -> fixing; name the fix branch; expose the evidence.
-- fix.verify    apply the patch, build, re-run the finding's probe (must now
+- fix.verify    apply the patch, build, re-run the item's probe (must now
                 behave CORRECTLY), fixing -> verifying; green/red.
 - fix.abandon   -> failed (patch didn't apply / build broke / probe still
                 wrong / the model gave up). A human can requeue from failed.
@@ -28,15 +28,15 @@ from forgeflow.util import run_cmd, template
 def _finding(conn, key):
     return conn.execute(
         "SELECT id, key, title, detail, state, severity, pattern, repo, branch"
-        " FROM findings WHERE key=?", (key,)).fetchone()
+        " FROM items WHERE key=?", (key,)).fetchone()
 
 
 @context_provider("fix_target")
 def _fix_target(env, task, spec):
     """The defect to fix: its title, evidence, root-cause pattern, and the
     repro. The fixer reads this + the region code + the manual and returns a
-    patch. Looked up by the finding key on the task payload."""
-    key = (task.get("payload") or {}).get("finding")
+    patch. Looked up by the item key on the task payload."""
+    key = (task.get("payload") or {}).get("item")
     if not key:
         return {}
     r = _finding(env.conn, key)
@@ -55,20 +55,20 @@ def _fix_target(env, task, spec):
 
 @block("fix.prepare", "state", {"prepared", "skip"}, required_params={"repo"})
 def fix_prepare(ctx, task, prev):
-    """triaged -> fixing. Name the fix branch (recorded on the finding) so the
-    open_pr step knows where to commit. Skips a finding that isn't triaged
+    """triaged -> fixing. Name the fix branch (recorded on the item) so the
+    open_pr step knows where to commit. Skips a item that isn't triaged
     (already fixing, rejected, merged, ...) — idempotent re-entry."""
     conn = ctx["_conn"]
-    key = (task.get("payload") or {}).get("finding")
+    key = (task.get("payload") or {}).get("item")
     r = _finding(conn, key) if key else None
     if not r or r["state"] != "triaged":
-        return "skip", {"reason": "not triaged", "finding": key,
+        return "skip", {"reason": "not triaged", "item": key,
                         "state": r["state"] if r else None}
     prefix = template(ctx.get("branch_prefix", "forgeflow/fix-"), {})
     branch = (prefix + key)[:200]
-    conn.execute("UPDATE findings SET branch=? WHERE id=?", (branch, r["id"]))
-    return "prepared", {"finding": key, "branch": branch,
-                        "_staged": [{"op": "transition", "finding_id": r["id"],
+    conn.execute("UPDATE items SET branch=? WHERE id=?", (branch, r["id"]))
+    return "prepared", {"item": key, "branch": branch,
+                        "_staged": [{"op": "transition", "item_id": r["id"],
                                      "to_state": "fixing", "event": "fix:started",
                                      "evidence": {"branch": branch}}]}
 
@@ -76,7 +76,7 @@ def fix_prepare(ctx, task, prev):
 @block("fix.verify", "local", {"green", "red", "error", "timeout"},
        required_params={"repo", "clang", "build_cmd"})
 def fix_verify(ctx, task, prev):
-    """Apply the proposed patch, build the compiler, and re-run the finding's
+    """Apply the proposed patch, build the compiler, and re-run the item's
     repro against the patched build: the invariant must now HOLD (unsafe code
     rejected / safe code accepted / no crash). fixing -> verifying. A patch
     that doesn't apply, breaks the build, or leaves the repro still wrong is
@@ -85,24 +85,24 @@ def fix_verify(ctx, task, prev):
     conn = ctx["_conn"]
     repo = template(ctx["repo"], {})
     res = prev or {}
-    key = (task.get("payload") or {}).get("finding")
+    key = (task.get("payload") or {}).get("item")
     r = _finding(conn, key) if key else None
     if not r or r["state"] != "fixing":
-        return "error", {"reason": "not fixing", "finding": key}
+        return "error", {"reason": "not fixing", "item": key}
     patch = res.get("patch") or ""
     probe = res.get("probe") or ""
     expect_error = bool(res.get("expect_error"))
     sd = Path(ctx["_step_dir"])
     tools = ctx.get("_tools")
 
-    staged = [{"op": "transition", "finding_id": r["id"], "to_state": "verifying",
+    staged = [{"op": "transition", "item_id": r["id"], "to_state": "verifying",
                "event": "fix:built"}]
 
     def red(why, extra=None):
         run_cmd(["git", "-C", repo, "checkout", "--", "."], 60, sd / "reset", tools=tools)
         ev = dict(extra or {}, why=why)
         staged[0]["evidence"] = ev
-        return "red", {"finding": key, "why": why, "_staged": staged}
+        return "red", {"item": key, "why": why, "_staged": staged}
 
     # 1. apply the patch
     pf = sd / "fix.patch"
@@ -142,19 +142,19 @@ def fix_verify(ctx, task, prev):
     if not correct:
         return red("repro still wrong after patch", ev)
     staged[0]["evidence"] = ev
-    return "green", {"finding": key, "branch": r["branch"], "_staged": staged}
+    return "green", {"item": key, "branch": r["branch"], "_staged": staged}
 
 
 @block("fix.abandon", "state", {"failed"})
 def fix_abandon(ctx, task, prev):
-    """Move the finding to 'failed' (a human can requeue). Reached when the
+    """Move the item to 'failed' (a human can requeue). Reached when the
     model won't propose a fix or verify came back red."""
     conn = ctx["_conn"]
-    key = (task.get("payload") or {}).get("finding")
+    key = (task.get("payload") or {}).get("item")
     r = _finding(conn, key) if key else None
     if not r or r["state"] not in ("fixing", "verifying"):
-        return "failed", {"finding": key, "noop": True}
-    return "failed", {"finding": key,
-                      "_staged": [{"op": "transition", "finding_id": r["id"],
+        return "failed", {"item": key, "noop": True}
+    return "failed", {"item": key,
+                      "_staged": [{"op": "transition", "item_id": r["id"],
                                    "to_state": "failed", "event": "fix:abandoned",
                                    "evidence": (prev or {}).get("why")}]}

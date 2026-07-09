@@ -5,7 +5,7 @@ knowledge the hunt runs on — without it the hunt is blind (re-discovers
 known bugs, has no playbook to classify against). This block ingests, from
 the vault:
 
-- findings.jsonl        -> findings   (the dedup catalogue: ~142 F-ids)
+- items.jsonl        -> items   (the dedup catalogue: ~142 F-ids)
 - code_notes/_playbook  -> patterns   (defect classes C1..C12 the explorer
                                         classifies against; the grep bench)
 - code_notes/_methods   -> methods    (the real detection-method bench)
@@ -23,8 +23,8 @@ from pathlib import Path
 from forgeflow.blocks import block
 from forgeflow.util import template
 
-# status(finding) -> finding-state, so imported bugs land in a sensible state
-# and don't clutter the board as 142 "open" findings.
+# status(item) -> item-state, so imported bugs land in a sensible state
+# and don't clutter the board as 142 "open" items.
 _STATE = {"filed": "pr_open", "fixed": "merged", "unfiled": "found",
           "retracted": "rejected", "do-not-file": "rejected"}
 
@@ -48,7 +48,7 @@ def bsc_ingest_seed(ctx, task, prev):
     """Port the campaign's accumulated KNOWLEDGE from the vault into native db
     rows, so the hunt starts where the last campaign left off (idempotent, run
     at campaign start):
-      findings.jsonl -> findings   (the dedup catalogue: known defects)
+      items.jsonl -> items   (the dedup catalogue: known defects)
       _playbook.md   -> patterns   (defect classes C1..C12)
       _methods.md    -> methods    (the bandit bench + warm-start trial/yield)
       _chains.md     -> chains      (call-chain surfaces)
@@ -59,8 +59,8 @@ def bsc_ingest_seed(ctx, task, prev):
     notes = vault / "code_notes"
     out = {}
 
-    # --- findings.jsonl -> findings (dedup catalogue) --------------------
-    fj = vault / "findings.jsonl"
+    # --- items.jsonl -> items (dedup catalogue) --------------------
+    fj = vault / "items.jsonl"
     n_f = 0
     if fj.is_file():
         for line in fj.read_text(errors="replace").splitlines():
@@ -78,12 +78,12 @@ def bsc_ingest_seed(ctx, task, prev):
             title = (" ".join(x for x in (fid, d.get("feature"),
                                           d.get("severity")) if x))[:200]
             conn.execute(
-                "INSERT OR IGNORE INTO findings(key, source, title, detail,"
+                "INSERT OR IGNORE INTO items(key, source, title, detail,"
                 " severity, repo, state) VALUES (?,?,?,?,?,?,?)",
                 (fid, "import", title, json.dumps(d),
                  (d.get("severity") or "").lower() or None, repo, state))
             n_f += 1
-    out["findings"] = n_f
+    out["items"] = n_f
 
     # --- _playbook.md -> patterns (defect classes) ----------------------
     n_p = 0

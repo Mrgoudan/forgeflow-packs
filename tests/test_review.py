@@ -81,12 +81,12 @@ class ReviewPipelineTest(unittest.TestCase):
         eng.conn.execute(
             "INSERT INTO patterns(id, description, grep_rule, review_lens)"
             " VALUES ('unsafe','x','pickle\\.loads','watch deserialization')")
-        # prior finding in the touched file (history context)
+        # prior item in the touched file (history context)
         oid = eng.conn.execute(
             "INSERT INTO code_objects(repo,path,kind,first_seen_sha,last_seen_sha)"
             " VALUES ('demo','discount.py','file','s','s')").lastrowid
-        fid = db.upsert_finding(eng.conn, "F-old", "old deser bug", "bughunt", "demo")
-        eng.conn.execute("INSERT INTO implications(finding_id,object_id,role)"
+        fid = db.upsert_item(eng.conn, "F-old", "old deser bug", "bughunt", "demo")
+        eng.conn.execute("INSERT INTO implications(item_id,object_id,role)"
                          " VALUES (?,?,'root_cause')", (fid, oid))
 
         db.emit_event(eng.conn, "review.requested",
@@ -95,11 +95,11 @@ class ReviewPipelineTest(unittest.TestCase):
         eng.run_until_idle()
 
         f = {r["key"]: r["state"] for r in eng.conn.execute(
-            "SELECT key, state FROM findings")}
+            "SELECT key, state FROM items")}
         # refutation: RCE confirmed, div-zero rejected
         self.assertEqual(f.get("review-feature-discount-0"), "triaged")
         self.assertEqual(f.get("review-feature-discount-1"), "rejected")
-        # machine finding triaged
+        # machine item triaged
         self.assertTrue(any(k.startswith("pattern-feature-discount-unsafe")
                             and s == "triaged" for k, s in f.items()))
         # posted comment holds only confirmed, and carried query auth
@@ -123,7 +123,7 @@ class ReviewPipelineTest(unittest.TestCase):
         eng.run_until_idle()
         self.assertEqual(len(self.forge.comments), 1)         # posted, not skipped
         self.assertIn("no defects found", self.forge.comments[0]["body"])
-        n = eng.conn.execute("SELECT count(*) c FROM findings").fetchone()["c"]
+        n = eng.conn.execute("SELECT count(*) c FROM items").fetchone()["c"]
         self.assertEqual(n, 0)
 
     def test_degraded_backend_down_parks(self):
@@ -138,9 +138,9 @@ class ReviewPipelineTest(unittest.TestCase):
         eng.run_until_idle()
         t = eng.conn.execute("SELECT state FROM tasks WHERE kind='review'").fetchone()
         self.assertEqual(t["state"], "parked")     # AI down -> park
-        # no-AI core still filed its machine finding
+        # no-AI core still filed its machine item
         machine = eng.conn.execute(
-            "SELECT state FROM findings WHERE key LIKE 'pattern-%'").fetchone()
+            "SELECT state FROM items WHERE key LIKE 'pattern-%'").fetchone()
         self.assertIsNotNone(machine)
 
 

@@ -1,7 +1,7 @@
 """Review-pack blocks (layer 2): the only custom Python this pack needs.
 
 - review.diff     produce the diff under review inside the worktree
-- review.file_findings  stage one findings row per agent claim
+- review.file_findings  stage one items row per agent claim
 
 Both follow the block rules: outcomes from exit codes / structure only,
 subprocesses via util.run_cmd, db writes staged (never committed here).
@@ -46,18 +46,18 @@ def review_diff(ctx, task, prev):
 
 @block("review.file_findings", "state", {"ok"}, required_params={"repo"})
 def review_file_findings(ctx, task, prev):
-    """Turn the agent's verdict (a CLAIM) into findings rows in state
+    """Turn the agent's verdict (a CLAIM) into items rows in state
     'found'. The agent never touches the db; a later triage/evidence stage
-    decides what the findings become."""
+    decides what the items become."""
     payload = task.get("payload") or {}
-    findings = (prev or {}).get("findings") or []
+    items = (prev or {}).get("items") or []
     staged, summary = [], []
-    for i, f in enumerate(findings):
+    for i, f in enumerate(items):
         if not isinstance(f, dict) or not f.get("title"):
             continue
         key = "review-%s-%d" % (payload.get("branch", "unknown"), i)
         staged.append({
-            "op": "upsert_finding", "key": key, "title": f["title"][:200],
+            "op": "upsert_item", "key": key, "title": f["title"][:200],
             "source": "review", "repo": str(ctx["repo"]),
             "detail": json.dumps(f, sort_keys=True),
             "severity": f.get("severity"),
@@ -66,7 +66,7 @@ def review_file_findings(ctx, task, prev):
                         "severity": f.get("severity"),
                         "path": f.get("path")})
     return "ok", {"_staged": staged, "filed": len(staged),
-                  "findings": summary, "path": (prev or {}).get("path"),
+                  "items": summary, "path": (prev or {}).get("path"),
                   "run_id": (prev or {}).get("_run_id")}
 
 
@@ -75,11 +75,11 @@ _SEV_RANK = {"low": 1, "medium": 2, "high": 3}
 
 @block("review.adjudicate", "state", {"ok"})
 def review_adjudicate(ctx, task, prev):
-    """The verdict of the refutation pass, applied through the finding
+    """The verdict of the refutation pass, applied through the item
     state machine. Agent candidates the refuter CONFIRMED move found ->
     triaged (with the reason as evidence); REJECTED move found -> rejected.
-    Machine (pattern-*) findings are confirmed by construction -> triaged.
-    Only triaged findings reach egress; rejected ones are archived, not
+    Machine (pattern-*) items are confirmed by construction -> triaged.
+    Only triaged items reach egress; rejected ones are archived, not
     posted. The confirmed set (with severity) rides to review.completed."""
     conn = ctx["_conn"]
     payload = task.get("payload") or {}
@@ -90,50 +90,50 @@ def review_adjudicate(ctx, task, prev):
     staged, confirmed = [], []
 
     def _lookup(key):
-        r = conn.execute("SELECT id, title, severity, state FROM findings"
+        r = conn.execute("SELECT id, title, severity, state FROM items"
                          " WHERE key=?", (key,)).fetchone()
         return r
 
     # agent candidates: adjudicate per the refuter's decision
     for r in conn.execute(
-            "SELECT id, key, title, severity, state FROM findings"
+            "SELECT id, key, title, severity, state FROM items"
             " WHERE source='review' AND key LIKE 'review-' || ? || '-%'"
             " ORDER BY id", (branch,)):
         if r["state"] != "found":
             continue
         d = decisions.get(r["key"])
         if d and str(d.get("decision", "")).upper() == "CONFIRM":
-            staged.append({"op": "transition", "finding_id": r["id"],
+            staged.append({"op": "transition", "item_id": r["id"],
                            "to_state": "triaged", "event": "review:confirmed",
                            "evidence": {"reason": d.get("reason", ""),
                                         "run_id": run_id}})
             confirmed.append({"key": r["key"], "title": r["title"],
                               "severity": r["severity"], "confidence": "vetted"})
         else:
-            staged.append({"op": "transition", "finding_id": r["id"],
+            staged.append({"op": "transition", "item_id": r["id"],
                            "to_state": "rejected", "event": "review:refuted",
                            "evidence": {"reason": d.get("reason", "") if d else
                                         "not defended by refutation pass",
                                         "run_id": run_id}})
 
-    # machine findings that are REAL problems -> triaged (the manual gate, a
+    # machine items that are REAL problems -> triaged (the manual gate, a
     # red build, a compiler crash/hang). A probe behavior CHANGE (probe-flip)
     # is EVIDENCE for the AI, not a defect — it stays 'found' and is never
     # posted.
     for r in conn.execute(
-            "SELECT id, key, title, severity, state, pattern FROM findings"
+            "SELECT id, key, title, severity, state, pattern FROM items"
             " WHERE source='review' AND state='found'"
             " AND (key LIKE 'pattern-' || ? || '-%' OR key LIKE 'sweep-' || ? || '-%'"
             "      OR key LIKE 'build-' || ? || '%') ORDER BY id",
             (branch, branch, branch)):
         if r["pattern"] == "probe-flip":
             continue                       # behavior change = evidence, not a defect
-        staged.append({"op": "transition", "finding_id": r["id"],
+        staged.append({"op": "transition", "item_id": r["id"],
                        "to_state": "triaged", "event": "review:machine_rule",
                        "evidence": {"kind": r["pattern"]}})
         confirmed.append({"key": r["key"], "title": r["title"],
                           "severity": r["severity"], "confidence": "machine"})
 
     confirmed.sort(key=lambda f: -_SEV_RANK.get(f.get("severity"), 0))
-    return "ok", {"_staged": staged, "findings": confirmed,
+    return "ok", {"_staged": staged, "items": confirmed,
                   "confirmed": len(confirmed)}

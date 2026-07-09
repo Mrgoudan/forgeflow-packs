@@ -1,10 +1,10 @@
 # Industrial review pipeline: no-AI machine core + agent lens + adversarial
-# refutation, all findings routed through the finding state machine. Only
-# vetted/machine findings reach 'triaged' (and thus egress); speculative
-# lens findings are rejected, archived, never posted.
+# refutation, all items routed through the item state machine. Only
+# vetted/machine items reach 'triaged' (and thus egress); speculative
+# lens items are rejected, archived, never posted.
 workflow: review
 consumes: [review.requested]
-emits: [review.completed, finding.triaged, finding.rejected]
+emits: [review.completed, item.triaged, item.rejected]
 
 steps:
   - name: workspace
@@ -19,7 +19,7 @@ steps:
     params: { base: "{payload.base}" }
     outcomes: { ok: prescan, empty: done, error: failed, timeout: failed }
 
-  # ---- no-AI core: runs and files findings even with every model down ----
+  # ---- no-AI core: runs and files items even with every model down ----
   - name: prescan
     block: review.pattern_scan
     timeout_s: 60
@@ -27,7 +27,7 @@ steps:
     context: [patterns]
     outcomes: { clean: lens, hits: lens, timeout: failed }
 
-  # ---- AI stage 1: propose candidate findings ----------------------------
+  # ---- AI stage 1: propose candidate items ----------------------------
   - name: lens
     block: agent.run
     llm: review
@@ -43,11 +43,11 @@ steps:
       CLEAN: adjudicate               # nothing proposed -> still triage machine hits
       agent_limit: parked             # transient: retry when the model returns
       agent_backend: parked
-      agent_invalid: adjudicate       # garbage: degrade to machine findings
+      agent_invalid: adjudicate       # garbage: degrade to machine items
       timeout: adjudicate
 
   - name: file
-    block: review.file_findings       # candidates -> findings rows (state found)
+    block: review.file_findings       # candidates -> items rows (state found)
     timeout_s: 30
     params: { repo: "{paths.repo}" }
     outcomes: { ok: refute }
@@ -60,13 +60,13 @@ steps:
     timeout_s: 900
     context:
       - payload
-      - candidates                    # the lens's own findings, to vet
+      - candidates                    # the lens's own items, to vet
     outcomes:
       DECIDED: adjudicate
       NONE: adjudicate
       agent_limit: parked
       agent_backend: parked
-      agent_invalid: adjudicate       # can't vet -> machine findings still ship
+      agent_invalid: adjudicate       # can't vet -> machine items still ship
       timeout: adjudicate
 
   # ---- adjudicate through the state machine, then announce ---------------
@@ -83,5 +83,5 @@ steps:
       data:
         request: "{payload}"
         confirmed: "{prev.confirmed}"
-        findings: "{prev.findings}"
+        items: "{prev.items}"
     outcomes: { ok: done }

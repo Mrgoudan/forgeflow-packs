@@ -1,4 +1,4 @@
-# Fixer output: a minimal patch for ONE finding plus the repro the oracle
+# Fixer output: a minimal patch for ONE item plus the repro the oracle
 # re-runs to confirm the fix. PATCHED routes to verify; NO_FIX abandons.
 type: object
 required: [verdict]

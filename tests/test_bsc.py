@@ -221,11 +221,11 @@ class BscAiMandatoryTest(unittest.TestCase):
                                  "build", "sweep", "lens", "file", "refute",
                                  "adjudicate", "announce"])
         f = {r["key"]: r["state"] for r in eng.conn.execute(
-            "SELECT key, state FROM findings")}
-        # every finding came from the AI (review-*), vetted by refutation
+            "SELECT key, state FROM items")}
+        # every item came from the AI (review-*), vetted by refutation
         self.assertEqual(f.get("review-bsc-fix-0"), "triaged")
         self.assertEqual(f.get("review-bsc-fix-1"), "rejected")
-        self.assertFalse(any(k.startswith("pattern-") for k in f))  # no no-AI findings
+        self.assertFalse(any(k.startswith("pattern-") for k in f))  # no no-AI items
         prompt = (list((self.base).glob("ff-*/data/runs/1/ask0/prompt"))[0]).read_text()
         self.assertIn("## context: bsc_manual", prompt)
 
@@ -237,8 +237,8 @@ class BscAiMandatoryTest(unittest.TestCase):
                              " WHERE kind='review'").fetchone()
         self.assertEqual(t["state"], "parked")            # queued for another run
         # AI-only: with the model down there is NO output at all — no
-        # machine findings, nothing posted. The review must have AI.
-        n = eng.conn.execute("SELECT count(*) c FROM findings").fetchone()["c"]
+        # machine items, nothing posted. The review must have AI.
+        n = eng.conn.execute("SELECT count(*) c FROM items").fetchone()["c"]
         self.assertEqual(n, 0)
         self.assertEqual(queue.unpark(eng.conn), 1)       # unpark re-queues it
 

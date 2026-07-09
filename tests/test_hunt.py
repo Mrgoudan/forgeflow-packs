@@ -52,21 +52,21 @@ class ProbeSweepTest(unittest.TestCase):
         self._probe("good", "ok\n", "ok")
         self._probe("drift", "actual output\n", "DIFFERENT expected")
         outcome, res = self._sweep()
-        self.assertEqual(outcome, "findings")
+        self.assertEqual(outcome, "items")
         self.assertEqual(res["failed"], 1)
         keys = [op["key"] for op in res["_staged"]]
         self.assertEqual(keys, ["sweep-b-drift"])
         self.assertEqual(res["_staged"][0]["severity"], "medium")
 
     def test_timeout_probe_is_high_finding(self):
-        # a probe whose compile hangs -> per-probe timeout -> high finding
+        # a probe whose compile hangs -> per-probe timeout -> high item
         self.cc.write_text("#!/bin/sh\ncase \"$1\" in *hang*) sleep 30;; "
                            "*) cat \"$1\" 1>&2;; esac\n")
         self.cc.chmod(0o755)
         self._probe("fine", "x\n", "x")
         self._probe("hang", "y\n", "y")
         outcome, res = self._sweep(probe_timeout_s=1)
-        self.assertEqual(outcome, "findings")
+        self.assertEqual(outcome, "items")
         f = [op for op in res["_staged"] if op["key"] == "sweep-b-hang"][0]
         self.assertEqual(f["severity"], "high")
         self.assertIn("timeout", f["pattern"])
@@ -96,7 +96,7 @@ class ProbeSweepTest(unittest.TestCase):
                            '*) cat "$1" 1>&2;; esac\n')
         self.cc.chmod(0o755)
         o, res = self._sweep(mode="diff", baseline_dir=baseline)
-        self.assertEqual(o, "findings")
+        self.assertEqual(o, "items")
         keys = [op["key"] for op in res["_staged"]]
         self.assertEqual(keys, ["sweep-b-changes"])            # only the flip
         self.assertEqual(res["_staged"][0]["pattern"], "probe-flip")

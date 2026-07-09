@@ -2,7 +2,7 @@
 """Export the forgeflow DB's KNOWLEDGE as CHUNKED, git-friendly files.
 
 One JSONL file per table (one row per line, stable primary-key order) plus a
-`_schema.sql`. Growth is append-shaped: a new finding/reading adds a *line* to
+`_schema.sql`. Growth is append-shaped: a new item/reading adds a *line* to
 one file — so git diffs stay tiny and no single file balloons over time. This
 is NOT truncation (no knowledge is dropped); it's chunking. Operational/audit
 and regenerable tables (events/tasks/task_steps/runs/embeddings/dash_control)
@@ -19,7 +19,7 @@ import sqlite3
 from pathlib import Path
 
 # what carries the campaign's accumulated knowledge (worth versioning)
-KNOWLEDGE = ["code_objects", "findings", "transitions", "patterns", "methods",
+KNOWLEDGE = ["code_objects", "items", "transitions", "patterns", "methods",
              "chains", "readings", "regions", "coverage", "implications",
              "lessons", "egress", "watermarks"]
 

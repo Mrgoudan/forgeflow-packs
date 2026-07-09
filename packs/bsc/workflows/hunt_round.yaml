@@ -2,7 +2,7 @@
 # no-AI finders (probe regression sweep), then kick off the explorer auto-swap
 # loop. Trigger with: emit hunt.round_requested {base: <branch>}.
 #
-# The knowledge bench (methods/findings/patterns/chains + readings) is NOT
+# The knowledge bench (methods/items/patterns/chains + readings) is NOT
 # ingested here — it persists in the db, ported once by `run-bsc.sh port`
 # (re-run that only when the vault changes).
 workflow: hunt_round
@@ -35,7 +35,7 @@ steps:
       cmd: "{pack.probe_cmd}"
       max_workers: "{pack.probe_workers}"
       repo: "{paths.repo}"
-    outcomes: { clean: kick, findings: kick, error: kick, timeout: kick }
+    outcomes: { clean: kick, items: kick, error: kick, timeout: kick }
 
   - name: kick                       # start the explorer loop
     block: event.emit

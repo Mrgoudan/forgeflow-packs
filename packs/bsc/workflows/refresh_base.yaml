@@ -24,4 +24,4 @@ steps:
       max_workers: "{pack.probe_workers}"
       baseline_root: "{pack.baseline_root}"
       repo: "{paths.repo}"
-    outcomes: { clean: done, findings: done, error: failed, timeout: failed }
+    outcomes: { clean: done, items: done, error: failed, timeout: failed }

@@ -6,7 +6,7 @@ Run it at setup, or whenever the vault changes:
 
     ./run-bsc.sh port
 
-It ports findings/patterns/methods/chains (bsc.ingest_seed) and the code-note
+It ports items/patterns/methods/chains (bsc.ingest_seed) and the code-note
 readings (bsc.ingest_notes) into the shared db. Idempotent.
 """
 from __future__ import annotations
@@ -57,13 +57,13 @@ def main():
 
     # --- curate the PRIMARY reading methods to the top of the bench --------
     # func-read (whole-function white-box) and call-chain-read (interprocedural
-    # chain walk) are the FOUNDATIONAL hunt methods. Imported findings don't
+    # chain walk) are the FOUNDATIONAL hunt methods. Imported items don't
     # record which bench-arm found them (found_by is free-text), so credit
     # these two by attribution: the campaign found most of its bugs by reading.
     import json as _json
     from collections import Counter as _Counter
     cnt = _Counter()
-    for row in conn.execute("SELECT detail FROM findings WHERE source='import'"):
+    for row in conn.execute("SELECT detail FROM items WHERE source='import'"):
         try:
             fb = (_json.loads(row["detail"] or "{}").get("found_by") or "").strip().lower()
         except Exception:
@@ -93,7 +93,7 @@ def main():
     print("primary reading methods (attributed yield):", dict(cnt))
 
     print("\ndb now holds:")
-    for tbl in ("findings", "patterns", "methods", "chains", "readings", "regions"):
+    for tbl in ("items", "patterns", "methods", "chains", "readings", "regions"):
         try:
             n = conn.execute("SELECT count(*) FROM %s" % tbl).fetchone()[0]
         except Exception:

@@ -16,4 +16,4 @@ properties:
         id:          { type: string }   # kebab-case, unique, not already on the bench
         description: { type: string }   # the generation tactic (how to make a candidate)
         target:      { type: string }   # defect class it aims at (optional)
-        rationale:   { type: string }   # the gap it fills — which finding/pattern (optional)
+        rationale:   { type: string }   # the gap it fills — which item/pattern (optional)

@@ -4,7 +4,7 @@ type: object
 required: [verdict]
 properties:
   verdict: { enum: [FINDINGS, CLEAN] }
-  findings:
+  items:
     type: array
     items:
       type: object

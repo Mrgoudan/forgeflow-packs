@@ -4,7 +4,7 @@
 
 Creates the DB, applies the schema, loads every table, then opens it through the
 engine so the operational tables (events/tasks/...) are created empty. Refuses
-to clobber a DB that already holds findings unless --force.
+to clobber a DB that already holds items unless --force.
 
   db_import.py [--dir data/knowledge] [--db run/state/forgeflow.db] [--force]
 """
@@ -21,7 +21,7 @@ from pathlib import Path
 def _findings(db):
     try:
         c = sqlite3.connect(db)
-        n = c.execute("SELECT count(*) FROM findings").fetchone()[0]
+        n = c.execute("SELECT count(*) FROM items").fetchone()[0]
         c.close()
         return n
     except sqlite3.OperationalError:
@@ -40,7 +40,7 @@ def main():
         sys.exit("no export at %s (missing _schema.sql)" % d)
     db = Path(a.db)
     if db.exists() and not a.force and _findings(db) > 0:
-        sys.exit("refuse: %s already has %d findings — pass --force to overwrite"
+        sys.exit("refuse: %s already has %d items — pass --force to overwrite"
                  % (db, _findings(db)))
 
     db.parent.mkdir(parents=True, exist_ok=True)
@@ -65,9 +65,9 @@ def main():
                       % (t, ", ".join(cols), ph), rows)
         total += len(rows)
     c.commit()
-    n = c.execute("SELECT count(*) FROM findings").fetchone()[0]
+    n = c.execute("SELECT count(*) FROM items").fetchone()[0]
     c.close()
-    print("rebuilt %s from %s: %d rows (%d findings)" % (db, d, total, n))
+    print("rebuilt %s from %s: %d rows (%d items)" % (db, d, total, n))
 
     engine = os.environ.get("ENGINE", str(Path.home() / "bsd" / "forgeflow"))
     try:

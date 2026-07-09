@@ -90,7 +90,7 @@ class Daemon:
 
     def tick(self):
         """The daemon's own clock = the auto-triggers. Review polls for new
-        PRs; fix fires on any new triaged finding; hunt re-opens a round when
+        PRs; fix fires on any new triaged item; hunt re-opens a round when
         it's gone idle AND continuous is on. All gated by the capability flags
         (so a disabled/`paused` capability never auto-fires)."""
         now, c, subs = time.monotonic(), self.conn, self.eng.subscriptions
@@ -112,9 +112,9 @@ class Daemon:
         base = flag(c, "hunt_base") or "HEAD"
         if flag(c, "cap_fix") == "1" and now - self._t["fix"] > FIX_S:
             self._t["fix"] = now
-            for r in c.execute("SELECT key FROM findings WHERE state='triaged'"
+            for r in c.execute("SELECT key FROM items WHERE state='triaged'"
                                " AND branch IS NULL"):
-                emits.append(("fix.requested", {"finding": r["key"], "base": base}))
+                emits.append(("fix.requested", {"item": r["key"], "base": base}))
         if (flag(c, "cap_hunt") == "1" and flag(c, "hunt_continuous") == "1"
                 and now - self._t["hunt"] > HUNT_S):
             n = c.execute("SELECT count(*) FROM tasks WHERE kind LIKE 'hunt%'"
@@ -167,7 +167,7 @@ def _counts(conn, sql, args=()):
 
 def snapshot(conn):
     tasks = _counts(conn, "SELECT state, count(*) FROM tasks GROUP BY state")
-    findings = _counts(conn, "SELECT state, count(*) FROM findings GROUP BY state")
+    items = _counts(conn, "SELECT state, count(*) FROM items GROUP BY state")
     methods = _counts(conn, "SELECT status, count(*) FROM methods GROUP BY status")
     regions = conn.execute(
         "SELECT count(*) t,"
@@ -179,7 +179,7 @@ def snapshot(conn):
                    for r in conn.execute(
                        "SELECT id, status, trials, verified_yield FROM methods"
                        " ORDER BY verified_yield DESC, trials DESC, status, id LIMIT 8")]
-    prs = conn.execute("SELECT count(*) FROM findings WHERE pr_number IS NOT NULL").fetchone()[0]
+    prs = conn.execute("SELECT count(*) FROM items WHERE pr_number IS NOT NULL").fetchone()[0]
     active = [dict(id=r["id"], kind=r["kind"], state=r["state"], attempts=r["attempts"],
                    step=r["step"], age=r["age"])
               for r in conn.execute(
@@ -193,7 +193,7 @@ def snapshot(conn):
     events = [dict(name=r["name"], at=r["at"]) for r in conn.execute(
         "SELECT name, at FROM events ORDER BY id DESC LIMIT 12")]
     return {
-        "tasks": tasks, "findings": findings, "methods": methods,
+        "tasks": tasks, "items": items, "methods": methods,
         "regions": {"total": regions["t"] or 0, "leased": regions["leased"] or 0,
                     "cooling": regions["cooling"] or 0},
         "round": int(rnd["cursor"]) if rnd else 0, "prs": prs,
@@ -382,7 +382,7 @@ def do_action(conn, subs, action, params):
     elif action == "file_issues":                          # report confirmed bugs as issues
         n = 0
         for r in conn.execute(
-                "SELECT key, pattern FROM findings WHERE source='bughunt'"
+                "SELECT key, pattern FROM items WHERE source='bughunt'"
                 " AND ('issue:'||key) NOT IN (SELECT target FROM egress"
                 " WHERE kind='issue' AND forge_id IS NOT NULL)"):
             db.emit_event(conn, "hunt.bug_confirmed",
@@ -394,8 +394,8 @@ def do_action(conn, subs, action, params):
     elif action == "run_fix":
         base = params.get("base") or "HEAD"
         n = 0
-        for r in conn.execute("SELECT key FROM findings WHERE state='triaged'"):
-            db.emit_event(conn, "fix.requested", {"finding": r["key"], "base": base}, subs)
+        for r in conn.execute("SELECT key FROM items WHERE state='triaged'"):
+            db.emit_event(conn, "fix.requested", {"item": r["key"], "base": base}, subs)
             n += 1
         return {"queued": n}
     else:
@@ -665,9 +665,9 @@ function runAct(c,a,needsPat){
 function renderStats(s){
   stats.innerHTML=`
    <div class=card><h2>Tasks</h2>${kv(s.tasks)}</div>
-   <div class=card><h2>Findings (bugs)</h2>
-     <div class=row><span class=k><b>total</b></span><span><b>${Object.values(s.findings||{}).reduce((a,b)=>a+b,0)}</b></span></div>
-     ${kv(s.findings)}</div>
+   <div class=card><h2>Items (bugs)</h2>
+     <div class=row><span class=k><b>total</b></span><span><b>${Object.values(s.items||{}).reduce((a,b)=>a+b,0)}</b></span></div>
+     ${kv(s.items)}</div>
    <div class=card><h2>Methods</h2>${kv(s.methods)}
      <div class=row style="margin-top:6px"><span class=k>PRs opened</span><span>${s.prs}</span></div></div>
    <div class=card><h2>Regions</h2>
@@ -855,9 +855,9 @@ function renderHome(){
     document.getElementById('qbody').innerHTML=qrows(STATE.queue);renderFeed(STATE);}
 }
 function renderKPIs(s){
-  const F=s.findings||{},tot=Object.values(F).reduce((a,b)=>a+b,0),M=s.methods||{},T=s.tasks||{};
+  const F=s.items||{},tot=Object.values(F).reduce((a,b)=>a+b,0),M=s.methods||{},T=s.tasks||{};
   const K=[
-    {n:tot,l:'Findings',x:`${F.pr_open||0} in PR · ${F.merged||0} merged`,a:1},
+    {n:tot,l:'Items',x:`${F.pr_open||0} in PR · ${F.merged||0} merged`,a:1},
     {n:s.prs||0,l:'PRs opened'},
     {n:M.active||0,l:'Methods',x:`${M.exhausted||0} exhausted`},
     {n:s.regions.total,l:'Regions',x:`${s.regions.leased} leased · ${s.regions.cooling} cooling`},

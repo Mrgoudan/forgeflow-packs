@@ -1,11 +1,11 @@
 # BSC review — AI-ONLY. There is no no-AI/machine-only path: the review is
 # done by the GLM agent (lens) and adversarially confirmed by the agent
 # (refute). If the AI breaks down the review PARKS and is re-queued; it
-# never produces or posts findings without AI. The only deterministic step
+# never produces or posts items without AI. The only deterministic step
 # is the manual gate — a governance precondition, not a code review.
 workflow: review
 consumes: [review.requested]
-emits: [review.completed, finding.triaged, finding.rejected]
+emits: [review.completed, item.triaged, item.rejected]
 
 steps:
   - name: workspace
@@ -43,7 +43,7 @@ steps:
       max_workers: "{pack.probe_workers}"
       baseline_root: "{pack.baseline_root}"
       repo: "{paths.repo}"
-    outcomes: { clean: build, findings: build, error: build, timeout: build }
+    outcomes: { clean: build, items: build, error: build, timeout: build }
 
   - name: build                      # evidence gate: build PR clang (per
     block: evidence.build            # review, incremental).
@@ -63,7 +63,7 @@ steps:
       max_workers: "{pack.probe_workers}"
       baseline_root: "{pack.baseline_root}"
       repo: "{paths.repo}"
-    outcomes: { clean: lens, findings: lens, error: lens, timeout: lens }
+    outcomes: { clean: lens, items: lens, error: lens, timeout: lens }
 
   - name: lens                       # AI review — the ONLY thing that finds
     block: agent.run                 # code defects. No machine-only fallback.
@@ -107,7 +107,7 @@ steps:
       DECIDED: adjudicate
       NONE: adjudicate
       # confirmation is part of the AI review — a breakdown re-queues, never
-      # posts unvetted findings.
+      # posts unvetted items.
       agent_limit: parked
       agent_backend: parked
       agent_invalid: parked
@@ -126,5 +126,5 @@ steps:
       data:
         request: "{payload}"
         confirmed: "{prev.confirmed}"
-        findings: "{prev.findings}"
+        items: "{prev.items}"
     outcomes: { ok: done }

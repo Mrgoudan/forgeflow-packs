@@ -106,7 +106,7 @@ class ConductorTest(unittest.TestCase):
                                  "title": "boom", "pattern": "cls-x",
                                  "severity": "high", "grep_rule": "boom"})
         self.assertEqual(o, "confirmed")
-        finds = [s for s in res["_staged"] if s["op"] == "upsert_finding"]
+        finds = [s for s in res["_staged"] if s["op"] == "upsert_item"]
         emits = [s["name"] for s in res["_staged"] if s["op"] == "emit_event"]
         self.assertEqual(finds[0]["key"], "BUG-1")
         self.assertEqual(finds[0]["source"], "bughunt")
@@ -333,9 +333,9 @@ class HuntLoopTest(unittest.TestCase):
             "SELECT count(*) c FROM tasks WHERE kind='hunt_explore' AND state='done'"
         ).fetchone()["c"]
         self.assertGreaterEqual(n_expl, 6)
-        # no unvetted findings from a dry campaign
+        # no unvetted items from a dry campaign
         self.assertEqual(eng.conn.execute(
-            "SELECT count(*) c FROM findings").fetchone()["c"], 0)
+            "SELECT count(*) c FROM items").fetchone()["c"], 0)
         # ...but exploration still accumulated function readings (the loop
         # runs on dry turns too), one per region explored
         self.assertGreaterEqual(eng.conn.execute(

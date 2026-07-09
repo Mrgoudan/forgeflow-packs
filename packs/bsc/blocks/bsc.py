@@ -4,7 +4,7 @@ The BiSheng C user manual lives INSIDE the reviewed repo
 (`clang/docs/BSC/BiShengCLanguageUserManual.md`). It is ground truth: the
 bsc-* skills are distilled from it and may lag, so the manual overrides the
 skills. And because it is ground truth, a PR that changes BSC semantics must
-update it — a semantics change with no manual edit is itself a finding.
+update it — a semantics change with no manual edit is itself a item.
 
 Determinism: "the manual changed" is a git blob-hash comparison; "semantics
 touched without the manual" is a diff name-list check. No guessing.
@@ -102,7 +102,7 @@ def _bsc_manual(env, task, spec):
         note += ("It CHANGED since the skills were validated (blob %s vs "
                  "pinned %s); treat skills as suspect where they differ."
                  % (blob[:12], pinned[:12]))
-    # Soft signal (NOT an auto-finding): does the diff change BSC semantics
+    # Soft signal (NOT an auto-item): does the diff change BSC semantics
     # without touching the manual? Most compiler fixes legitimately don't
     # need a manual edit; the AI decides whether THIS change alters
     # documented language behavior. That judgment can't be a blind gate.
@@ -136,8 +136,8 @@ def _bsc_manual(env, task, spec):
        required_params={"repo", "manual_path"})
 def bsc_manual_gate(ctx, task, prev):
     """No-AI gate: a PR whose diff touches a BSC semantics prefix but NOT the
-    manual file gets a machine finding — the manual is ground truth and must
-    be updated before review. The finding uses the machine-finding key
+    manual file gets a machine item — the manual is ground truth and must
+    be updated before review. The item uses the machine-item key
     convention so adjudicate triages and posts it."""
     payload = task.get("payload") or {}
     base, branch = payload.get("base"), payload.get("branch")
@@ -157,15 +157,15 @@ def bsc_manual_gate(ctx, task, prev):
     semantics = [p for p in touched
                  if any(p.startswith(pre) for pre in prefixes)]
     if semantics and manual_path not in touched:
-        finding = {
-            "op": "upsert_finding",
+        item = {
+            "op": "upsert_item",
             "key": "pattern-%s-manual-not-updated" % branch,
             "title": "BSC semantics changed without updating the user manual "
                      "(%s): %s" % (manual_path, ", ".join(semantics[:5])),
             "source": "review", "repo": str(repo), "severity": "medium",
             "pattern": "manual-not-updated",
         }
-        return "flagged", dict(carry, _staged=[finding], semantics=semantics)
+        return "flagged", dict(carry, _staged=[item], semantics=semantics)
     return "ok", dict(carry, semantics=semantics)
 
 

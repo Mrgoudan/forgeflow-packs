@@ -1,6 +1,6 @@
 # Oracle-Scout (HUNT.md): fired when the explore loop saturates the current
 # arsenal. The scout invents NEW detection methods from the confirmed
-# findings + the pattern catalogue; merge_scout inserts them and reopens the
+# items + the pattern catalogue; merge_scout inserts them and reopens the
 # hunt (emit hunt.explore_requested) — or, if the scout has no new idea, the
 # campaign ends here. This is the meta-loop that grows the methods bench.
 workflow: hunt_scout
@@ -14,7 +14,7 @@ steps:
     schema: scout_result
     timeout_s: 1800
     context:
-      - hunt_arsenal                 # active + exhausted bench, confirmed findings
+      - hunt_arsenal                 # active + exhausted bench, confirmed items
       - patterns                     # known defect classes to build generators for
       - bsc_manual                   # authoritative correct behavior
       - lessons: { task_kind: bughunt }

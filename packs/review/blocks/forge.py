@@ -117,10 +117,10 @@ def publish_comment(ctx, task, prev):
     request = payload.get("request") or {}
     if not request.get("pr"):
         return "skipped", {"reason": "no pr in request (local review)"}
-    findings = payload.get("findings") or []
+    items = payload.get("items") or []
     rank = {"low": 1, "medium": 2, "high": 3}
     floor = rank.get(ctx.get("min_severity", "low"), 0)
-    posted = [f for f in findings if rank.get(f.get("severity"), 1) >= floor]
+    posted = [f for f in items if rank.get(f.get("severity"), 1) >= floor]
     # Plain, useful wording — no internal jargon.
     lines = ["🤖 Automated BSC review — PR #%s" % request["pr"], ""]
     if posted:
@@ -198,18 +198,18 @@ def publish_comment(ctx, task, prev):
        required_params={"repo", "pr_create_url", "base"})
 def forge_open_pr(ctx, task, prev):
     """Commit the verified fix (already applied in the working tree by
-    fix.verify) onto the finding's fix branch and open a PR. Egress choke
+    fix.verify) onto the item's fix branch and open a PR. Egress choke
     point: without FORGE_WRITE=1 it commits the branch LOCALLY and returns
     'staged' (never pushes/opens). On a real open it pushes the branch, POSTs
-    the PR, records pr_number, and moves the finding verifying -> pr_open."""
+    the PR, records pr_number, and moves the item verifying -> pr_open."""
     conn = ctx["_conn"]
     repo = template(ctx["repo"], {})
-    key = (task.get("payload") or {}).get("finding")
-    r = conn.execute("SELECT id, title, state, branch FROM findings WHERE key=?",
+    key = (task.get("payload") or {}).get("item")
+    r = conn.execute("SELECT id, title, state, branch FROM items WHERE key=?",
                      (key,)).fetchone()
     if not r or r["state"] != "verifying" or not r["branch"]:
-        return "error", {"reason": "finding not in verifying/branch unset",
-                         "finding": key}
+        return "error", {"reason": "item not in verifying/branch unset",
+                         "item": key}
     branch, base = r["branch"], template(ctx["base"], {})
     sd = Path(ctx["_step_dir"])
     tools = ctx.get("_tools")
@@ -221,13 +221,13 @@ def forge_open_pr(ctx, task, prev):
     git("checkout", "-B", branch, name="branch")
     git("add", "-A", name="add")
     title = "fix: %s" % (r["title"] or key)
-    body = "Automated fix for finding `%s`.\n\nProduced by forgeflow." % key
+    body = "Automated fix for item `%s`.\n\nProduced by forgeflow." % key
     code, _o, _e = git("commit", "-m", title, "-m", body, name="commit")
     if code != 0:                                   # nothing staged to commit
-        return "nothing", {"finding": key, "reason": "empty commit"}
+        return "nothing", {"item": key, "reason": "empty commit"}
 
     if os.environ.get("FORGE_WRITE") != "1":
-        return "staged", {"finding": key, "branch": branch,
+        return "staged", {"item": key, "branch": branch,
                           "note": "committed locally; set FORGE_WRITE=1 to push+PR"}
 
     pcode, _o, pe = git("push", "-u", "origin", branch, "--force-with-lease",
@@ -260,9 +260,9 @@ def forge_open_pr(ctx, task, prev):
     except OSError as e:
         return "forge_server", {"detail": str(e)}
     number = pr.get("number") or pr.get("iid") or pr.get("id")
-    conn.execute("UPDATE findings SET pr_number=? WHERE id=?", (number, r["id"]))
-    return "opened", {"finding": key, "branch": branch, "pr_number": number,
-                      "_staged": [{"op": "transition", "finding_id": r["id"],
+    conn.execute("UPDATE items SET pr_number=? WHERE id=?", (number, r["id"]))
+    return "opened", {"item": key, "branch": branch, "pr_number": number,
+                      "_staged": [{"op": "transition", "item_id": r["id"],
                                    "to_state": "pr_open", "event": "fix:pr_opened",
                                    "evidence": {"pr_number": number, "branch": branch}}]}
 
@@ -325,7 +325,7 @@ def _behavior(ev):
 
 
 def _finding_report_body(title, key, severity, pattern, ev):
-    """The comment body for one confirmed finding: root cause (the headline +
+    """The comment body for one confirmed item: root cause (the headline +
     class), the Expected/Actual behavior contrast (with the real diagnostic),
     and the full .cbs repro."""
     probe = (ev.get("probe") or "").strip()
@@ -349,29 +349,29 @@ def _finding_report_body(title, key, severity, pattern, ev):
        required_params={"issue_url", "issue_comment_url"})
 def forge_report_finding(ctx, task, prev):
     """Report a CONFIRMED bug as a COMMENT under ONE umbrella issue (one issue
-    per campaign, one comment per finding). The umbrella issue is created on
+    per campaign, one comment per item). The umbrella issue is created on
     first use and its number kept in watermark 'bughunt.issue'. Egress choke
-    point: leak-scan -> egress row (dedup on the finding key) -> forge POST
+    point: leak-scan -> egress row (dedup on the item key) -> forge POST
     (only with FORGE_WRITE=1, else archived)."""
     conn = ctx["_conn"]
     payload = task.get("payload") or {}
-    key = payload.get("finding_key") or payload.get("finding")
+    key = payload.get("finding_key") or payload.get("item")
     if not key:
-        return "skipped", {"reason": "no finding in payload"}
+        return "skipped", {"reason": "no item in payload"}
     r = conn.execute("SELECT id, key, title, detail, severity, pattern"
-                     " FROM findings WHERE key=?", (key,)).fetchone()
+                     " FROM items WHERE key=?", (key,)).fetchone()
     if not r:
-        return "skipped", {"reason": "no such finding", "finding": key}
+        return "skipped", {"reason": "no such item", "item": key}
     try:
         ev = json.loads(r["detail"] or "{}")
     except ValueError:
         ev = {}
-    # only report ORACLE-CONFIRMED findings: a real repro is the evidence. A
-    # finding with no probe is a vault/catalogue entry that was never verified
+    # only report ORACLE-CONFIRMED items: a real repro is the evidence. A
+    # item with no probe is a vault/catalogue entry that was never verified
     # against base clang this campaign — never file it (that produced the
     # "probe not recorded / observed: —" junk comments).
     if not (ev.get("probe") or "").strip():
-        return "skipped", {"reason": "no probe (not oracle-confirmed)", "finding": key}
+        return "skipped", {"reason": "no probe (not oracle-confirmed)", "item": key}
     body = _finding_report_body(r["title"], key, r["severity"], r["pattern"], ev)
     for pattern in ctx.get("deny_patterns", ()):
         if re.search(pattern, body):
@@ -393,7 +393,7 @@ def forge_report_finding(ctx, task, prev):
                 " VALUES ('issue_comment',?,?,?,?)",
                 (target, body_sha, str(body_path), task["id"])).lastrowid
     if os.environ.get("FORGE_WRITE") != "1":
-        return "archived", {"egress_id": egress_id, "finding": key}
+        return "archived", {"egress_id": egress_id, "item": key}
 
     auth = ctx.get("auth")
     # umbrella issue: create once, remember its number
@@ -401,7 +401,7 @@ def forge_report_finding(ctx, task, prev):
     umbrella = wm["cursor"] if wm else None
     if not umbrella:
         idata = {"title": template(ctx.get("issue_title",
-                 "[BSC] forgeflow bug-hunt — confirmed findings"), {}),
+                 "[BSC] forgeflow bug-hunt — confirmed items"), {}),
                  "body": "Umbrella issue for forgeflow bug-hunt. Every confirmed "
                          "bug (verified against base clang) is posted as a comment below."}
         if ctx.get("issue_repo"):
@@ -416,7 +416,7 @@ def forge_report_finding(ctx, task, prev):
         with ensure_tx(conn):
             conn.execute("INSERT OR REPLACE INTO watermarks(scope, cursor)"
                          " VALUES ('bughunt.issue', ?)", (umbrella,))
-    # post the finding as a comment on the umbrella issue
+    # post the item as a comment on the umbrella issue
     curl = "%s/%s/comments" % (template(ctx["issue_comment_url"], {}).rstrip("/"),
                                umbrella)
     st, cm = _forge_post(curl, {"body": body}, auth, ctx["_timeout_s"])
@@ -429,6 +429,6 @@ def forge_report_finding(ctx, task, prev):
         conn.execute("UPDATE egress SET forge_id=? WHERE id=?",
                      (cid or umbrella, egress_id))
         ev["issue_number"] = umbrella
-        conn.execute("UPDATE findings SET detail=? WHERE id=?",
+        conn.execute("UPDATE items SET detail=? WHERE id=?",
                      (json.dumps(ev), r["id"]))
-    return "commented", {"finding": key, "issue": umbrella, "comment_id": cid}
+    return "commented", {"item": key, "issue": umbrella, "comment_id": cid}

@@ -11,7 +11,7 @@ reproduces the run. These blocks are those rules:
                      records the arm on the task, so concurrent explorers
                      diverge instead of all picking one argmax, and the merge
                      credits the arm actually used — stable under concurrency).
-- hunt.merge_explore apply an explorer's VERIFIED result: file finding+pattern,
+- hunt.merge_explore apply an explorer's VERIFIED result: file item+pattern,
                      credit the dispatched arm's yield, update dry_streak/
                      cooldown, enqueue the replacement explorer (auto-swap) +
                      an exploiter on a confirm. Retires a spent arm and, at
@@ -246,7 +246,7 @@ def _record_reading(conn, repo, region, note):
 def hunt_merge_explore(ctx, task, prev):
     """Apply the explorer's VERIFIED result (the verify step already ran the
     repro against base clang). Pure dispatch:
-      confirmed -> finding + pattern rows, method.verified_yield++, region
+      confirmed -> item + pattern rows, method.verified_yield++, region
                    dry_streak reset, release lease, emit pattern_confirmed
                    (spawn exploiter) + explore_requested (auto-swap).
       dry       -> dry_streak++; at DRY_LIMIT set cooldown; release lease;
@@ -279,7 +279,7 @@ def hunt_merge_explore(ctx, task, prev):
 
     if confirmed:
         key = verified["key"]
-        staged.append({"op": "upsert_finding", "key": key,
+        staged.append({"op": "upsert_item", "key": key,
                        "title": verified.get("title", key)[:200],
                        "source": "bughunt", "repo": repo,
                        "detail": json.dumps(verified.get("evidence", {})),
@@ -389,18 +389,18 @@ def _hunt_method(env, task, spec):
 def _hunt_arsenal(env, task, spec):
     """What the Oracle-Scout reasons over: the ACTIVE bench (still rotating),
     the EXHAUSTED arms (don't re-propose these), and a sample of CONFIRMED
-    findings (the mechanisms to generalize into new methods)."""
+    items (the mechanisms to generalize into new methods)."""
     conn = env.conn
     active = [{"id": r["id"], "how": r["description"]} for r in conn.execute(
         "SELECT id, description FROM methods WHERE status='active' ORDER BY id")]
     exhausted = [r["id"] for r in conn.execute(
         "SELECT id FROM methods WHERE status='exhausted' ORDER BY id")]
-    findings = [{"title": r["title"], "pattern": None} for r in conn.execute(
-        "SELECT title FROM findings WHERE source='bughunt'"
+    items = [{"title": r["title"], "pattern": None} for r in conn.execute(
+        "SELECT title FROM items WHERE source='bughunt'"
         " ORDER BY id DESC LIMIT 20")]
-    return {"active": active, "exhausted": exhausted, "confirmed_findings": findings,
+    return {"active": active, "exhausted": exhausted, "confirmed_findings": items,
             "note": "Invent methods NOT in active or exhausted. Generalize a "
-                    "confirmed finding's mechanism, or target a pattern class "
+                    "confirmed item's mechanism, or target a pattern class "
                     "no active method provokes."}
 
 
@@ -456,7 +456,7 @@ def _bump(conn, scope):
        required_params={"repo", "clang"})
 def hunt_verify_candidate(ctx, task, prev):
     """The verification oracle (invariant, non-negotiable): a candidate
-    becomes a finding ONLY if its repro reproduces against the base compiler,
+    becomes a item ONLY if its repro reproduces against the base compiler,
     classified by exit code + expected. The LLM proposed the probe + the
     invariant; this decides truth. Crash (exit>128 / signal) is always a bug.
     """
@@ -464,14 +464,14 @@ def hunt_verify_candidate(ctx, task, prev):
     passthrough = {"region": res.get("region"), "method": res.get("method"),
                    "round": res.get("round"), "note": res.get("note")}
     verdict = res.get("verdict")
-    finding = res.get("finding") or {}
-    if verdict != "CONFIRMED_NEW" or not finding.get("probe"):
+    item = res.get("item") or {}
+    if verdict != "CONFIRMED_NEW" or not item.get("probe"):
         return "no_candidate", dict(passthrough, verified={"confirmed": False})
 
     clang = template(ctx["clang"], {})
     sd = Path(ctx["_step_dir"])
     probe = sd / "cand.cbs"
-    probe.write_text(finding["probe"])
+    probe.write_text(item["probe"])
     inc = ctx.get("include")
     cmd = [clang, "-fsyntax-only", "-Wno-nullability-completeness"]
     if inc:
@@ -482,8 +482,8 @@ def hunt_verify_candidate(ctx, task, prev):
     errored = code != 0
     crashed = code is not None and code > 128
     stderr = Path(err).read_text(errors="replace")
-    expect_error = bool(finding.get("expect_error"))
-    # the compiler is BUGGY (a real finding) when it violates the invariant:
+    expect_error = bool(item.get("expect_error"))
+    # the compiler is BUGGY (a real item) when it violates the invariant:
     #  - should reject unsafe code but accepted it (missed diagnostic), or
     #  - should accept safe code but rejected it (false positive), or
     #  - crashed on any input.
@@ -495,15 +495,15 @@ def hunt_verify_candidate(ctx, task, prev):
         confirmed, why = True, "safe code rejected (false positive)"
     else:
         confirmed, why = False, "compiler behaved as the invariant expects"
-    want = finding.get("expect_contains")
+    want = item.get("expect_contains")
     if confirmed and want and expect_error and errored and want not in stderr:
         # errored but not for the claimed reason -> don't trust it
         confirmed, why = False, "errored but not with the expected diagnostic"
     verified = {"confirmed": confirmed, "why": why, "exit_code": code,
-                "key": finding.get("key"), "title": finding.get("title"),
-                "pattern": finding.get("pattern"),
-                "severity": finding.get("severity", "medium"),
-                "grep_rule": finding.get("grep_rule"),
+                "key": item.get("key"), "title": item.get("title"),
+                "pattern": item.get("pattern"),
+                "severity": item.get("severity", "medium"),
+                "grep_rule": item.get("grep_rule"),
                 # evidence is what the bug REPORT renders: the full probe, the
                 # invariant that was violated (expect_error/expect_contains =
                 # the EXPECTED behavior), and the compiler's real output
@@ -512,8 +512,8 @@ def hunt_verify_candidate(ctx, task, prev):
                 "evidence": {"why": why, "exit_code": code,
                              "stderr_path": err, "actual": stderr.strip()[:1200],
                              "expect_error": expect_error,
-                             "expect_contains": finding.get("expect_contains"),
-                             "probe": finding["probe"][:8000]}}
+                             "expect_contains": item.get("expect_contains"),
+                             "probe": item["probe"][:8000]}}
     return ("confirmed" if confirmed else "refuted"), dict(passthrough,
                                                            verified=verified)
 
@@ -552,7 +552,7 @@ def hunt_merge_exploit(ctx, task, prev):
         want_err = bool(v.get("expect_error"))
         if crashed or (want_err and not errored) or ((not want_err) and errored):
             filed += 1
-            staged.append({"op": "upsert_finding",
+            staged.append({"op": "upsert_item",
                            "key": v.get("key") or "%s-variant-%d" % (pattern, i),
                            "title": (v.get("title") or "variant of %s" % pattern)[:200],
                            "source": "bughunt", "repo": repo,

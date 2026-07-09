@@ -3,7 +3,7 @@
 Runs a bench of probes against a command (a compiler) CONCURRENTLY and
 classifies each by comparing its stderr to a recorded `<probe>.expected.stderr`
 oracle. A mismatch (behavior drifted) or a per-probe timeout (a hang) is a
-finding.
+item.
 
 Parallelism model (the answer to "how do we parallelize here"): the engine
 loop stays sequential — this block is ONE task/step, but it fans out its
@@ -32,7 +32,7 @@ def _norm(s):
     return "\n".join(line.rstrip() for line in (s or "").strip().splitlines())
 
 
-@block("hunt.probe_sweep", "state", {"clean", "findings", "error", "timeout"},
+@block("hunt.probe_sweep", "state", {"clean", "items", "error", "timeout"},
        required_params={"probes_dir", "cmd"})
 def hunt_probe_sweep(ctx, task, prev):
     """mode:
@@ -41,7 +41,7 @@ def hunt_probe_sweep(ctx, task, prev):
       diff             — run against PR clang, FLAG probes whose output differs
                          from the recorded base (a true head-vs-base behavior
                          diff — no stale-oracle ambiguity).
-    A per-probe timeout (a hang) is always a finding.
+    A per-probe timeout (a hang) is always a item.
     """
     probes_dir = _tpl(ctx["probes_dir"], task, prev)
     cmd_tpl = ctx["cmd"]
@@ -122,11 +122,11 @@ def hunt_probe_sweep(ctx, task, prev):
         else:
             title = "probe %s: diverges from its recorded oracle" % r["id"]
         staged.append({
-            "op": "upsert_finding", "key": "sweep-%s-%s" % (branch, r["id"]),
+            "op": "upsert_item", "key": "sweep-%s-%s" % (branch, r["id"]),
             "title": title, "source": "review", "repo": str(repo),
             "severity": "high" if r["outcome"] == "timeout" else "medium",
             "pattern": "probe-%s" % r["outcome"]})
-    return ("findings" if fails else "clean"), dict(
+    return ("items" if fails else "clean"), dict(
         carry, mode=mode, total=len(results), failed=len(fails),
         results=[{"id": r["id"], "outcome": r["outcome"]} for r in results],
         _staged=staged)
@@ -142,7 +142,7 @@ def _probe_results(env, task, spec):
     prefix = "sweep-%s-" % branch
     diverged = []
     for r in env.conn.execute(
-            "SELECT key, pattern FROM findings WHERE source='review'"
+            "SELECT key, pattern FROM items WHERE source='review'"
             " AND key LIKE 'sweep-' || ? || '-%' ORDER BY key", (branch,)):
         diverged.append({"probe": r["key"][len(prefix):],
                          "outcome": (r["pattern"] or "").replace("probe-", "")})
@@ -157,7 +157,7 @@ def _probe_results(env, task, spec):
        required_params={"cmd"})
 def evidence_build(ctx, task, prev):
     """Build the code under review (the evidence gate's compile step). green
-    = exit 0; red = the PR does not build (itself a high finding). Classify
+    = exit 0; red = the PR does not build (itself a high item). Classify
     by exit code ONLY. Carries the worktree path forward. The build makes
     the pack's clang reflect the PR so the probe sweep tests PR behavior,
     not base drift."""
@@ -178,7 +178,7 @@ def evidence_build(ctx, task, prev):
     if code != 0:
         branch = (task.get("payload") or {}).get("branch", "?")
         return "red", dict(carry, exit_code=code, stderr_path=err, _staged=[{
-            "op": "upsert_finding", "key": "build-%s" % branch,
+            "op": "upsert_item", "key": "build-%s" % branch,
             "title": "PR does not build (exit %d)" % code, "source": "review",
             "repo": str(template(ctx.get("repo", ""), {})), "severity": "high",
             "pattern": "red-build"}])

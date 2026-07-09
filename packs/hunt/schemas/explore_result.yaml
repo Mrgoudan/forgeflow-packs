@@ -1,5 +1,5 @@
 # Explorer output contract (HUNT.md Mode 1: notes BEFORE probing). The
-# verdict routes; the note is the required function reading; the finding is
+# verdict routes; the note is the required function reading; the item is
 # the proposed bug (only on CONFIRMED_NEW) that the verification oracle runs.
 type: object
 required: [verdict, note]
@@ -12,7 +12,7 @@ properties:
       object:     { type: string }              # the function/file read
       invariant:  { type: string }              # one-sentence promise
       candidates: { type: array, items: { type: string } }   # 3 ranked lenses
-  finding:
+  item:
     type: object
     required: [key, title, probe, expect_error]
     properties:

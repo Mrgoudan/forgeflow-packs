@@ -7,11 +7,11 @@ the db ad hoc — a provider's output is the ONLY window a step gets.
 - lessons:  distilled instructions for this task kind (learn workflow's
             output; empty table = empty list, never an error)
 - history:  defect history of the files this branch touches
-            (implications ⋈ findings by path — "where the bodies are")
+            (implications ⋈ items by path — "where the bodies are")
 - patterns: active machine-checkable defect rules (patterns.grep_rule)
 
 review.pattern_scan then runs those rules over the ADDED lines of the
-diff — findings from it are machine facts that post with every model
+diff — items from it are machine facts that post with every model
 down. BERT/agents shape attention; these file evidence.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _lessons(env, task, spec):
 
 @context_provider("history")
 def _history(env, task, spec):
-    """{touched_path: [prior findings implicated there]}. Touched paths
+    """{touched_path: [prior items implicated there]}. Touched paths
     come from git (deterministic), not from the model."""
     payload = task.get("payload") or {}
     repo = env.pack.paths.get("repo")
@@ -52,7 +52,7 @@ def _history(env, task, spec):
             "SELECT f.key, f.title, f.state, i.role"
             " FROM code_objects co"
             " JOIN implications i ON i.object_id = co.id"
-            " JOIN findings f ON f.id = i.finding_id"
+            " JOIN items f ON f.id = i.item_id"
             " WHERE co.path=? ORDER BY f.id", (path,)).fetchall()
         if rows:
             history[path] = [{"key": r["key"], "title": r["title"],
@@ -74,14 +74,14 @@ def _patterns(env, task, spec):
 
 @context_provider("candidates")
 def _candidates(env, task, spec):
-    """The agent lens's own proposed findings (state 'found'), for the
-    refutation pass to vet. Machine (pattern-*) findings are excluded —
+    """The agent lens's own proposed items (state 'found'), for the
+    refutation pass to vet. Machine (pattern-*) items are excluded —
     they are evidence, not claims, and are never refuted."""
     branch = (task.get("payload") or {}).get("branch", "")
     return [{"key": r["key"], "title": r["title"], "severity": r["severity"],
              "detail": r["detail"]}
             for r in env.conn.execute(
-                "SELECT key, title, severity, detail FROM findings"
+                "SELECT key, title, severity, detail FROM items"
                 " WHERE source='review' AND state='found'"
                 " AND key LIKE 'review-' || ? || '-%' ORDER BY id", (branch,))]
 
@@ -90,7 +90,7 @@ def _candidates(env, task, spec):
        accepts_context={"patterns", "payload"})
 def review_pattern_scan(ctx, task, prev):
     """Run every active pattern rule over the ADDED lines of review.diff.
-    Each hit is a machine finding (staged, state 'found') — evidence from
+    Each hit is a machine item (staged, state 'found') — evidence from
     a rule distilled out of every bug previously fixed. No model, no
     prose: a regex either matches an added line or it doesn't."""
     payload = task.get("payload") or {}
@@ -114,7 +114,7 @@ def review_pattern_scan(ctx, task, prev):
                 hits.append({"rule": rule["id"], "diff_line": n,
                              "text": text.strip()[:200]})
                 staged.append({
-                    "op": "upsert_finding",
+                    "op": "upsert_item",
                     "key": "pattern-%s-%s-%d" % (payload.get("branch", "?"),
                                                  rule["id"], n),
                     "title": "pattern %s matched added line: %s"

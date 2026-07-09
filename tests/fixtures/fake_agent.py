@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Deterministic stand-in for the review agents (claude-cli envelope shape).
-Prompt-aware: the LENS prompt yields two candidate findings; the REFUTE
+Prompt-aware: the LENS prompt yields two candidate items; the REFUTE
 prompt confirms the defensible one and rejects the speculative one — so the
-pipeline can be exercised (incl. refutation dropping a finding) with no
+pipeline can be exercised (incl. refutation dropping a item) with no
 model cost. A real run just swaps the CLI for `claude`."""
 import json
 import re
@@ -40,12 +40,12 @@ if "adversarial reviewer" in prompt or "REFUTE" in prompt:
     print(envelope(block({"verdict": "DECIDED", "decisions": decisions})))
 elif "_test_clean" in prompt:
     # lens mode, clean case: find nothing
-    print(envelope(block({"verdict": "CLEAN", "findings": []})))
+    print(envelope(block({"verdict": "CLEAN", "items": []})))
 else:
     # lens mode: propose two candidates (one solid, one weak)
     print(envelope(block({
         "verdict": "FINDINGS",
-        "findings": [
+        "items": [
             {"title": "pickle.loads on untrusted coupon bytes (RCE)",
              "severity": "high", "path": "discount.py"},
             {"title": "apply_discount may divide by zero at percent=100",

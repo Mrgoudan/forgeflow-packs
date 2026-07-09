@@ -26,8 +26,8 @@ def _ctx(conn, **kw):
 
 
 def _finding(conn, key="BUG-1", state="triaged", repo="r"):
-    """A finding driven (via the real transition fn) to `state`."""
-    fid = db.upsert_finding(conn, key, "boom in FooChecker", "bughunt", repo,
+    """A item driven (via the real transition fn) to `state`."""
+    fid = db.upsert_item(conn, key, "boom in FooChecker", "bughunt", repo,
                             detail='{"probe":"x"}', severity="high", pattern="C1")
     for s in _STEPS[state]:
         db.record_transition(conn, fid, s, "test:setup", subscriptions={})
@@ -35,7 +35,7 @@ def _finding(conn, key="BUG-1", state="triaged", repo="r"):
 
 
 def _task(key="BUG-1", base="main"):
-    return {"id": 1, "attempts": 0, "payload": {"finding": key, "base": base}}
+    return {"id": 1, "attempts": 0, "payload": {"item": key, "base": base}}
 
 
 class FixPrepareTest(unittest.TestCase):
@@ -52,7 +52,7 @@ class FixPrepareTest(unittest.TestCase):
         t = [s for s in r["_staged"] if s["op"] == "transition"][0]
         self.assertEqual(t["to_state"], "fixing")
         self.assertEqual(self.conn.execute(
-            "SELECT branch FROM findings WHERE key='BUG-1'").fetchone()[0], r["branch"])
+            "SELECT branch FROM items WHERE key='BUG-1'").fetchone()[0], r["branch"])
 
     def test_prepare_skips_when_not_triaged(self):
         with tx(self.conn):
@@ -130,7 +130,7 @@ class OpenPrTest(unittest.TestCase):
         os.environ.pop("FORGE_WRITE", None)
         with tx(self.conn):
             fid = _finding(self.conn, state="verifying", repo=str(self.repo))
-            self.conn.execute("UPDATE findings SET branch='forgeflow/fix-BUG-1'"
+            self.conn.execute("UPDATE items SET branch='forgeflow/fix-BUG-1'"
                               " WHERE id=?", (fid,))
         (self.repo / "foo.cpp").write_text("int x = 1; // fix\n")   # applied patch
         with tx(self.conn):

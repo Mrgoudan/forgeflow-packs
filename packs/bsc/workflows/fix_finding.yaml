@@ -1,6 +1,6 @@
-# Auto-fix (HUNT.md remediation): drive ONE triaged finding to an open PR.
-# Trigger: emit fix.requested {finding: <finding-key>}. The finding must be
-# 'triaged' (a review/hunt confirm, or a human). Drives the engine finding
+# Auto-fix (HUNT.md remediation): drive ONE triaged item to an open PR.
+# Trigger: emit fix.requested {item: <item-key>}. The item must be
+# 'triaged' (a review/hunt confirm, or a human). Drives the engine item
 # state machine: triaged -> fixing -> verifying -> pr_open (or failed).
 workflow: fix_finding
 consumes: [fix.requested]
@@ -21,7 +21,7 @@ steps:
     schema: fix_patch
     timeout_s: 1800
     context:
-      - fix_target                   # the finding: title, evidence, repro
+      - fix_target                   # the item: title, evidence, repro
       - bsc_manual                   # authoritative correct behavior (language)
       - bsc_compiler_guide           # how to edit the subsystem (compiler)
       - lessons: { task_kind: fix }

@@ -1,4 +1,4 @@
-# The refutation pass output contract. One decision per candidate finding.
+# The refutation pass output contract. One decision per candidate item.
 # verdict enum routes the step; decisions carry the adjudication.
 type: object
 required: [verdict, decisions]

@@ -39,7 +39,7 @@ blocks:
   - ../fix/blocks/fix.py            # generic auto-fix state machine (prepare/verify/abandon)
   - blocks/bsc.py                   # BSC: manual-wins gate, base clang, ensure_base
   - blocks/ingest.py                # BSC: code_notes -> readings
-  - blocks/seed.py                  # BSC: vault knowledge -> findings/patterns/methods/chains
+  - blocks/seed.py                  # BSC: vault knowledge -> items/patterns/methods/chains
 
 prompts:
   review: prompts/review.md
@@ -74,7 +74,7 @@ agents:
              env_keys: [ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN] }
 
 params:
-  # the knowledge vault: the campaign's accumulated findings/playbook/methods/
+  # the knowledge vault: the campaign's accumulated items/playbook/methods/
   # chains. bsc.ingest_seed ports these into native db rows (dedup catalogue,
   # defect classes, the method bench + bandit priors, call-chain surfaces).
   vault: "{paths.vault_dir}"
@@ -139,11 +139,11 @@ params:
   # confirmed bugs are reported as COMMENTS under ONE umbrella issue (created
   # once; number cached in watermark bughunt.issue). issue_url creates the
   # umbrella (gitee/gitcode v5: owner-level endpoint, repo in the POST body);
-  # issue_comment_url posts each finding as a comment ({issue} = umbrella no.).
+  # issue_comment_url posts each item as a comment ({issue} = umbrella no.).
   # Web view: https://gitcode.com/bisheng_c_language_dep/llvm-project/issues
   issue_url:   "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/issues"
   issue_comment_url: "https://api.gitcode.com/api/v5/repos/bisheng_c_language_dep/llvm-project/issues"
-  issue_title: "[BSC] forgeflow bug-hunt — confirmed findings"
+  issue_title: "[BSC] forgeflow bug-hunt — confirmed items"
   issue_repo:  "llvm-project"
   forge_auth:  { token_ref: MAIN, style: query, name: access_token }
   deny_patterns:
@@ -178,7 +178,7 @@ params:
   # verification oracle is separate and never rotates. Bandit-selected;
   # grown at runtime by the Oracle-Scout.
 
-  # --- auto-fix (fix_finding: triaged finding -> verified patch -> PR) -----
+  # --- auto-fix (fix_finding: triaged item -> verified patch -> PR) -----
   fix_branch_prefix: "forgeflow/fix-"
   # in-place build of the working tree WITH the patch applied (NOT a detached
   # checkout like the review/base build — the fix must build what it edited).

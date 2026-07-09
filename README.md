@@ -5,6 +5,23 @@ The engine stays generic; everything domain- and machine-specific lives
 here as **packs** — a pack is one folder of YAML workflows + plugin blocks +
 prompts + schemas + config.
 
+## The forgeflow ecosystem (4 repos)
+
+Cleanly separated so each has one job — generic engine, domain packs, static
+knowledge, and the live campaign state:
+
+| repo | holds | GitHub | gitcode |
+|---|---|---|---|
+| **forgeflow** | the generic, domain-agnostic engine | [`Mrgoudan/forgeflow`](https://github.com/Mrgoudan/forgeflow) | `ziruichen12138/forgeflow` |
+| **forgeflow-packs** | *this repo* — the BSC packs (workflows/blocks/prompts/config) | [`Mrgoudan/forgeflow-packs`](https://github.com/Mrgoudan/forgeflow-packs) | `bisheng_c_language_dep/FORGEFLOW-PACKS` |
+| **forgeflow-vault** | static knowledge: differential probes, defect catalogue, compiler-internals notes, method bench | [`Mrgoudan/forgeflow-vault`](https://github.com/Mrgoudan/forgeflow-vault) | `bisheng_c_language_dep/FORGEFLOW-VAULT` |
+| **forgeflow-data** | the living DB's knowledge, exported as chunked JSONL (git-friendly, rebuildable) | [`Mrgoudan/forgeflow-data`](https://github.com/Mrgoudan/forgeflow-data) | `bisheng_c_language_dep/FORGEFLOW-DATA` |
+
+`vault/` and `data/` are **separate git repos nested in this tree** (gitignored
+here, like the engine). `vault` = the static seed; `data` = a projection of the
+live `run/` DB (`run-bsc.sh export`/`import`). Secrets live only in `config/`
+and are never in any repo.
+
 ## Three kinds of thing, kept separate
 
 - **packs** (`packs/`) — pack *definitions*: workflows, blocks, prompts,
@@ -29,7 +46,9 @@ chmod 600 config/secrets.env
 It holds:
 - `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` — GLM behind the claude CLI
 - `FORGE_TOKEN_MAIN` — the forge (gitcode) API token
-- `FORGE_WRITE=1` — uncomment only when ready to post to real PRs
+
+`run-bsc.sh` defaults `FORGE_WRITE=1` (a live deployment posts for real). Launch
+with `FORGE_WRITE=0` for a dry run (egress archives to disk, nothing posted).
 
 `packs/bsc/run-bsc.sh` sources this file so both the GLM env vars and the
 forge token reach the daemon from that one place.
@@ -43,6 +62,8 @@ forgeflow-packs/
 │   ├── secrets.env           your keys (gitignored, chmod 600)
 │   └── secrets.env.example    template
 ├── run/                      shared runtime: db, worktrees, outputs (gitignored)
+├── vault/                    static BSC knowledge — own git repo (gitignored here)
+├── data/                     DB knowledge export — own git repo (gitignored here)
 │
 ├── packs/
 │   ├── review/               generic PR-review pack (forge-agnostic library)
@@ -100,5 +121,8 @@ mode, manual-wins, the must-update gate, AI-mandatory parking) run offline.
 ```bash
 $EDITOR config/secrets.env         # replace the two REPLACE_* lines
 ./packs/bsc/run-bsc.sh validate                        # prove it loads
-./packs/bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (no FORGE_WRITE)
+FORGE_WRITE=0 ./packs/bsc/run-bsc.sh emit forge.poll_requested --data '{}' --drive   # dry run (nothing posted)
 ```
+
+Backup / transfer the accumulated knowledge (the DB → the `data` repo):
+`./packs/bsc/run-bsc.sh export` then commit `data/`; `import` rebuilds a DB.

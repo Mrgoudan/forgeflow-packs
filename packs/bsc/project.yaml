@@ -29,6 +29,23 @@ tools:
 # it answers. env: reads the URL from the sourced secrets (one source of truth,
 # no endpoint duplicated here). forge_auth never auto-unparks — fix the token.
 agent_health_url: "env:ANTHROPIC_BASE_URL"
+
+# resource guard: pause claiming when the state root has < 4 GB free (clang
+# builds + run/ archives are the disk hogs). gc reclaims; doctor reports.
+min_free_disk_mb: 4096
+
+# Parallel daemon. NOTE: workers=1 today (so lanes are inert) — ALL clang users
+# (build_cmd, probe_cmd, hunt_clang, fix_build_cmd) share ONE
+# {paths.repo}/build/bin/clang that flips between base / PR / patched, so
+# concurrent builds — and hunt reads during a build — would corrupt each other.
+# Raising `workers` is safe only after (a) each capability builds in its OWN
+# build dir AND (b) every clang-touching step is tagged `lane: build` (the read
+# side too: sweeps + the hunt oracle). Lanes are pre-declared for that day.
+concurrency:
+  workers: 1
+  lanes:
+    build: 1            # serialize clang build/probe/oracle steps (tag them lane: build)
+    llm: 3              # concurrent GLM agent calls (rate-limit friendly)
 workflows: [workflows]
 blocks:
   - ../review/blocks/reviewblocks.py

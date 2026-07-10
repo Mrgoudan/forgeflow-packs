@@ -26,6 +26,7 @@ steps:
 
   - name: ensure_base                # before each review: pull base + ensure
     block: bsc.ensure_base           # the base baseline. Cached (base
+    lane: build                      # rebuilds base clang -> serialize (cap 1)
     timeout_s: 3600                  # unchanged) = FREE; else rebuild base clang.
     params:
       repo: "{paths.repo}"
@@ -47,6 +48,7 @@ steps:
 
   - name: build                      # evidence gate: build PR clang (per
     block: evidence.build            # review, incremental).
+    lane: build                      # rebuilds PR clang -> serialize (cap 1)
     timeout_s: 3600
     params:
       cmd: "{pack.build_cmd}"

@@ -34,17 +34,17 @@ agent_health_url: "env:ANTHROPIC_BASE_URL"
 # builds + run/ archives are the disk hogs). gc reclaims; doctor reports.
 min_free_disk_mb: 4096
 
-# Parallel daemon. NOTE: workers=1 today (so lanes are inert) — ALL clang users
-# (build_cmd, probe_cmd, hunt_clang, fix_build_cmd) share ONE
-# {paths.repo}/build/bin/clang that flips between base / PR / patched, so
-# concurrent builds — and hunt reads during a build — would corrupt each other.
-# Raising `workers` is safe only after (a) each capability builds in its OWN
-# build dir AND (b) every clang-touching step is tagged `lane: build` (the read
-# side too: sweeps + the hunt oracle). Lanes are pre-declared for that day.
+# Parallel daemon. The one true contention is the clang REBUILD: build_cmd,
+# fix_build_cmd and ensure_base all write the single {paths.repo}/build/bin/clang,
+# so at most ONE may run at a time — those steps carry `lane: build` (cap 1).
+# This doubles as the memory guard: only one heavy build runs at once. Concurrent
+# clang RUNS (probe sweep, hunt oracle) and GLM agent steps parallelize freely.
+# (Per-capability build dirs would avoid the shared binary but cost a full build
+# tree each — too much disk/memory — so we serialize the rebuild instead.)
 concurrency:
-  workers: 1
+  workers: 3
   lanes:
-    build: 1            # serialize clang build/probe/oracle steps (tag them lane: build)
+    build: 1            # the clang rebuild: one at a time (the memory-heavy step)
     llm: 3              # concurrent GLM agent calls (rate-limit friendly)
 workflows: [workflows]
 blocks:

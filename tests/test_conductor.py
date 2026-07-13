@@ -269,6 +269,8 @@ blocks:
 schema:
   - {rev}/schema.sql
   - {hunt}/schema.sql
+corpora:
+  known_items: {{ table: items, key: id, text: title, ts: created_at, embed_with: hashing }}
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md

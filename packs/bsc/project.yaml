@@ -46,6 +46,32 @@ concurrency:
   lanes:
     build: 1            # the clang rebuild: one at a time (the memory-heavy step)
     llm: 3              # concurrent GLM agent calls (rate-limit friendly)
+
+# selectable corpora for the `select:` context provider — relevance-ranked
+# retrieval over the pack's OWN tables (vs dumping a whole growing table into
+# every prompt). embed_with: hashing = zero-setup, deterministic, rows never
+# leave the machine (swap for a models: entry / /embeddings endpoint for true
+# semantics). Table/column existence is checked at engine start.
+corpora:
+  known_items:          # the confirmed-defect catalogue (grows with the hunt)
+    table: items
+    key: id
+    text: title
+    ts: created_at
+    embed_with: hashing
+  defect_classes:       # graduated defect classes
+    table: patterns
+    key: id
+    text: description
+    weight: catches
+    embed_with: hashing
+  review_lessons:
+    table: lessons
+    key: id
+    text: rule
+    ts: created_at
+    embed_with: hashing
+
 workflows: [workflows]
 blocks:
   - ../review/blocks/reviewblocks.py

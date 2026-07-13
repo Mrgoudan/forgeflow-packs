@@ -12,6 +12,7 @@ steps:
     block: agent.run
     llm: scout
     schema: scout_result
+    params: { max_context_bytes: 300000 }   # runaway guard + context.json manifest
     timeout_s: 1800
     context:
       - hunt_arsenal                 # active + exhausted bench, confirmed items

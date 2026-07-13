@@ -21,6 +21,7 @@ steps:
     block: agent.run
     llm: explore
     schema: explore_result
+    params: { max_context_bytes: 300000 }   # runaway guard + context.json manifest
     timeout_s: 1800
     context:
       - hunt_region                  # leased region + its readings/chains

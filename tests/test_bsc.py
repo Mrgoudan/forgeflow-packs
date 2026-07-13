@@ -136,6 +136,8 @@ blocks:
 schema:
   - {rev}/schema.sql
   - {hunt}/schema.sql
+corpora:
+  known_items: {{ table: items, key: id, text: title, ts: created_at, embed_with: hashing }}
 prompts:
   review: {bsc}/prompts/review.md
   refute: {bsc}/prompts/refute.md
@@ -209,7 +211,7 @@ class BscAiMandatoryTest(unittest.TestCase):
     def _run(self, eng):
         queue.enqueue(eng.conn, "review",
                       {"branch": "bsc-fix", "base": "main", "pr": None,
-                       "head_sha": self.head})
+                       "head_sha": self.head, "title": "moved-from double free"})
         eng.run_until_idle()
 
     def test_ai_works_full_pipeline(self):

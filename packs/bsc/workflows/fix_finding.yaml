@@ -19,6 +19,7 @@ steps:
     block: agent.run
     llm: fix
     schema: fix_patch
+    params: { max_context_bytes: 300000 }   # runaway guard + context.json manifest
     timeout_s: 1800
     context:
       - fix_target                   # the item: title, evidence, repro

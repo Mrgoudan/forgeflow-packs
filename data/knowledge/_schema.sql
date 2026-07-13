@@ -31,7 +31,7 @@ CREATE TABLE "items" (
 DROP TABLE IF EXISTS transitions;
 CREATE TABLE transitions (           -- append-only audit log
     id            INTEGER PRIMARY KEY,
-    finding_id    INTEGER NOT NULL REFERENCES "items"(id),
+    item_id    INTEGER NOT NULL REFERENCES "items"(id),
     from_state    TEXT NOT NULL,
     to_state      TEXT NOT NULL,
     event         TEXT NOT NULL,         -- machine event, e.g. 'evidence:build_green'
@@ -40,7 +40,7 @@ CREATE TABLE transitions (           -- append-only audit log
     at            TEXT NOT NULL DEFAULT (datetime('now'))
 );
 DROP TABLE IF EXISTS patterns;
-CREATE TABLE patterns (              -- graduated from findings.pattern
+CREATE TABLE patterns (              -- graduated from items.pattern
     id            TEXT PRIMARY KEY,
     description   TEXT NOT NULL,
     review_lens   TEXT,                  -- text injected into review prompts
@@ -55,7 +55,7 @@ CREATE TABLE methods (               -- the oracle bench
     description   TEXT NOT NULL,
     status        TEXT NOT NULL DEFAULT 'candidate', -- candidate | active | exhausted
     trials        INTEGER NOT NULL DEFAULT 0,
-    verified_yield INTEGER NOT NULL DEFAULT 0,     -- findings that passed the repro gate
+    verified_yield INTEGER NOT NULL DEFAULT 0,     -- items that passed the repro gate
     last_used_round INTEGER
 );
 DROP TABLE IF EXISTS chains;
@@ -92,16 +92,16 @@ CREATE TABLE coverage (              -- hunt ledger: where we have looked
     workflow      TEXT NOT NULL,
     sha           TEXT NOT NULL,         -- tree state when swept
     probe_rev     TEXT,                  -- oracle version used
-    outcome       TEXT NOT NULL,         -- clean | findings:<n>
+    outcome       TEXT NOT NULL,         -- clean | items:<n>
     swept_at      TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (object_id, workflow, sha)
 );
 DROP TABLE IF EXISTS implications;
 CREATE TABLE implications (          -- finding <-> code mapping
-    finding_id    INTEGER NOT NULL REFERENCES "items"(id),
+    item_id    INTEGER NOT NULL REFERENCES "items"(id),
     object_id     INTEGER NOT NULL REFERENCES code_objects(id),
     role          TEXT NOT NULL,         -- root_cause | touched_by_fix | witness
-    PRIMARY KEY (finding_id, object_id, role)
+    PRIMARY KEY (item_id, object_id, role)
 );
 DROP TABLE IF EXISTS lessons;
 CREATE TABLE lessons (

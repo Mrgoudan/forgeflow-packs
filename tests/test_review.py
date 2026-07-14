@@ -4,7 +4,7 @@ import json
 import os
 import unittest
 
-from helpers import (FAKE_AGENT, FakeForge, PACKS, dead_cli, git, make_engine,
+from helpers import (ITEM_STATES_YAML, FAKE_AGENT, FakeForge, PACKS, dead_cli, git, make_engine,
                      tmpdir)
 
 from forgeflow import db, queue
@@ -33,7 +33,7 @@ def build_repo(base):
 def write_pack(base, repo, forge_url, cli, min_sev="medium"):
     pack = base / "pack"
     pack.mkdir()
-    (pack / "project.yaml").write_text("""\
+    (pack / "project.yaml").write_text(ITEM_STATES_YAML + """\
 name: review
 paths: {{ repo: {repo} }}
 tools: {{ git: {{ path: git }} }}

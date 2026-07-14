@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from helpers import PACKS, tmpdir
+from helpers import PACKS, tmpdir, ITEM_STATES_YAML, pack_db
 
 from forgeflow import db
 from forgeflow.blocks import load_files, get
@@ -17,7 +17,7 @@ _SCHEMA = [PACKS / "packs" / "hunt" / "schema.sql",
 
 
 def _connect(path):
-    conn = db.connect(path)
+    conn = pack_db(path)
     for sf in _SCHEMA:
         conn.executescript(sf.read_text())
     return conn
@@ -252,7 +252,7 @@ def _hunt_pack(base, explorer_cli):
     hunt = PACKS / "packs" / "hunt"
     fix = PACKS / "packs" / "fix"
     sc = PACKS / "tests" / "fixtures" / "fake_scout.py"
-    (pack / "project.yaml").write_text("""\
+    (pack / "project.yaml").write_text(ITEM_STATES_YAML + """\
 name: bsc
 paths: {{ repo: {base}, code_notes: {base}/notes }}
 tools: {{ git: {{ path: git }} }}

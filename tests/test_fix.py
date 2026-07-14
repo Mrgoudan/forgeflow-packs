@@ -4,7 +4,7 @@ import os
 import subprocess
 import unittest
 
-from helpers import PACKS, git, tmpdir
+from helpers import PACKS, git, tmpdir, ITEM_STATES, pack_db
 
 from forgeflow import db
 from forgeflow.blocks import load_files, get
@@ -30,7 +30,8 @@ def _finding(conn, key="BUG-1", state="triaged", repo="r"):
     fid = db.upsert_item(conn, key, "boom in FooChecker", "bughunt", repo,
                             detail='{"probe":"x"}', severity="high", pattern="C1")
     for s in _STEPS[state]:
-        db.record_transition(conn, fid, s, "test:setup", subscriptions={})
+        db.record_transition(conn, fid, s, "test:setup", subscriptions={},
+                     states=ITEM_STATES)
     return fid
 
 
@@ -40,7 +41,7 @@ def _task(key="BUG-1", base="main"):
 
 class FixPrepareTest(unittest.TestCase):
     def setUp(self):
-        self.conn = db.connect(tmpdir() / "t.db")
+        self.conn = pack_db(tmpdir() / "t.db")
 
     def test_prepare_triaged_to_fixing_names_branch(self):
         with tx(self.conn):
@@ -78,7 +79,7 @@ class FixVerifyTest(unittest.TestCase):
         self.patch = subprocess.run(["git", "-C", str(self.repo), "diff"],
                                     capture_output=True, text=True).stdout
         git(self.repo, "checkout", "--", "foo.cpp")
-        self.conn = db.connect(d / "t.db")
+        self.conn = pack_db(d / "t.db")
         self.clang = d / "clang.sh"                        # accepts (exit 0)
         self.clang.write_text("#!/bin/sh\nexit 0\n")
         self.clang.chmod(0o755)
@@ -124,7 +125,7 @@ class OpenPrTest(unittest.TestCase):
         git(self.repo, "config", "user.name", "d")
         git(self.repo, "add", "-A")
         git(self.repo, "commit", "-qm", "base")
-        self.conn = db.connect(d / "t.db")
+        self.conn = pack_db(d / "t.db")
 
     def test_staged_commits_branch_locally_without_write(self):
         os.environ.pop("FORGE_WRITE", None)
@@ -145,7 +146,7 @@ class OpenPrTest(unittest.TestCase):
 
 class FixAbandonTest(unittest.TestCase):
     def test_abandon_moves_to_failed(self):
-        conn = db.connect(tmpdir() / "t.db")
+        conn = pack_db(tmpdir() / "t.db")
         with tx(conn):
             _finding(conn, state="fixing")
         with tx(conn):

@@ -79,3 +79,38 @@ def dead_cli(path):
     p.write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(1)\n")
     p.chmod(0o755)
     return p
+
+
+# the packs' item lifecycle (now PACK-declared; the engine ships none).
+ITEM_STATES = {
+    "found": {"triaged", "rejected"}, "triaged": {"fixing", "deferred"},
+    "fixing": {"verifying", "deferred", "failed"},
+    "verifying": {"pr_open", "fixing", "deferred", "failed"},
+    "pr_open": {"in_review", "merged", "failed"},
+    "in_review": {"fixing", "merged", "deferred"},
+    "merged": set(), "deferred": {"triaged"}, "rejected": set(),
+    "failed": {"triaged"},
+}
+ITEM_STATES_YAML = """item_states:
+  found:     [triaged, rejected]
+  triaged:   [fixing, deferred]
+  fixing:    [verifying, deferred, failed]
+  verifying: [pr_open, fixing, deferred, failed]
+  pr_open:   [in_review, merged, failed]
+  in_review: [fixing, merged, deferred]
+  merged:    []
+  deferred:  [triaged]
+  rejected:  []
+  failed:    [triaged]
+"""
+
+
+def pack_db(path):
+    """db.connect + the review pack's pack-owned columns (branch, pr_number)."""
+    import sys
+    from forgeflow import db as _db
+    sys.path.insert(0, str(PACKS / "packs" / "review"))
+    import migrate as _m
+    conn = _db.connect(path)
+    _m.add_pack_columns(conn)
+    return conn

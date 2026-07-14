@@ -72,6 +72,19 @@ corpora:
     ts: created_at
     embed_with: hashing
 
+# the item lifecycle — pack vocabulary, declared here (the engine ships none)
+item_states:
+  found:     [triaged, rejected]
+  triaged:   [fixing, deferred]
+  fixing:    [verifying, deferred, failed]
+  verifying: [pr_open, fixing, deferred, failed]
+  pr_open:   [in_review, merged, failed]
+  in_review: [fixing, merged, deferred]
+  merged:    []
+  deferred:  [triaged]
+  rejected:  []
+  failed:    [triaged]
+
 workflows: [workflows]
 blocks:
   - ../review/blocks/reviewblocks.py

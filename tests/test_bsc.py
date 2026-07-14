@@ -5,7 +5,8 @@ import sys
 import unittest
 from types import SimpleNamespace
 
-from helpers import (FAKE_AGENT, PACKS, blob, dead_cli, git, make_engine, tmpdir)
+from helpers import (FAKE_AGENT, PACKS, ITEM_STATES_YAML, blob,
+                     dead_cli, git, make_engine, tmpdir)
 
 from forgeflow import db, queue
 
@@ -119,7 +120,7 @@ def write_pack(base, repo, pinned, cli):
     probes.mkdir()          # empty -> sweep returns 'error' -> routes to lens
     pack = base / "pack"
     pack.mkdir()
-    (pack / "project.yaml").write_text("""\
+    (pack / "project.yaml").write_text(ITEM_STATES_YAML + """\
 name: bsc
 paths: {{ repo: {repo}, code_notes: {notes} }}
 tools: {{ git: {{ path: git }} }}

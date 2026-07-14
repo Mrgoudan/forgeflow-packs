@@ -70,4 +70,9 @@ if [ "${1:-}" = "import" ]; then
     --db "$FF_ROOT/state/forgeflow.db" --dir "$DATA_DIR/knowledge" "$@"
 fi
 
+# pack-owned column migrations (the engine adds tables, never columns)
+if [ -f "$FF_ROOT/state/forgeflow.db" ]; then
+  python3 "$PACK_DIR/scripts/migrate_db.py" --db "$FF_ROOT/state/forgeflow.db"
+fi
+
 exec python3 -m forgeflow --root "$FF_ROOT" --pack "$PACK_DIR" "$@"
